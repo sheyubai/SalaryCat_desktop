@@ -29,10 +29,10 @@ button {
 
 .pet-stage {
   /* 猫、按钮、输入框仍固定在底部 240×240 区域。 */
-  /* Electron 窗口上方另外预留 80px，供回答框向上移动。 */
+  /* 上方预留 80px 给回答框，下方预留 24px 给组件阴影。 */
   position: absolute;
   right: 0;
-  bottom: 0;
+  bottom: 24px;
   width: 240px;
   height: 240px;
   overflow: visible;
@@ -110,7 +110,8 @@ button {
   border: 2px solid #4b3a32;
   border-radius: 20px;
   background: #fffdf9;
-  box-shadow: 3px 4px 0 rgb(75 58 50 / 20%);
+  /* 水平不偏移，阴影固定在回答气泡正下方。 */
+  box-shadow: 0 5px 7px rgb(75 58 50 / 22%);
   line-height: 1.35;
   overflow-wrap: anywhere;
   text-align: left;
@@ -185,7 +186,8 @@ button {
   border: 1px solid rgb(82 58 45 / 18%);
   border-radius: 50%;
   background: rgb(255 250 245 / 94%);
-  box-shadow: 0 4px 14px rgb(0 0 0 / 16%);
+  /* 水平不偏移，阴影跟随圆形按钮显示在正下方。 */
+  box-shadow: 0 4px 7px rgb(0 0 0 / 18%);
   color: #705345;
 }
 
@@ -262,7 +264,8 @@ button {
   border: 1px solid rgb(82 58 45 / 18%);
   border-radius: 19px;
   background: rgb(255 250 245 / 96%);
-  box-shadow: 0 5px 18px rgb(0 0 0 / 16%);
+  /* 水平不偏移，阴影显示在输入框正下方。 */
+  box-shadow: 0 5px 8px rgb(0 0 0 / 18%);
 }
 
 .pet-chat-input input {

@@ -3,8 +3,8 @@ export const DEFAULT_CONFIG = {
   characterId: "salary-cat",
   window: {
     width: 240,
-    // 240px pet area + 80px transparent space above for the speech bubble.
-    height: 320,
+    // 80px speech space + 240px pet area + 24px shadow space below.
+    height: 344,
     margin: 12,
     backgroundColor: "#00000000"
   },

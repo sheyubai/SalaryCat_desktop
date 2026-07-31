@@ -100,7 +100,8 @@ export function Pet({ manifest }: PetProps) {
     try {
       await audio.current.play();
       setMusicEnabled(true);
-    } catch {
+    } catch (error) {
+      console.error("音乐播放失败：", error);
       setMusicEnabled(false);
       wake("音乐播放失败，请检查音频文件。", DEFAULT_CONFIG.behavior.replyDurationMs);
     }
