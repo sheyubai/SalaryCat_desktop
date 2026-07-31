@@ -26,6 +26,15 @@ function ChatIcon() {
   );
 }
 
+function SettingsIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M9.5 2h5l.6 2.5 2.1 1.2 2.5-.7 2.5 4.3-1.9 1.8v2.4l1.9 1.8-2.5 4.3-2.5-.7-2.1 1.2-.6 2.5h-5l-.6-2.5-2.1-1.2-2.5.7-2.5-4.3 1.9-1.8v-2.4L1.8 9.3 4.3 5l2.5.7 2.1-1.2L9.5 2Z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
 export function PetActionMenu({
   chatOpen,
   musicAvailable,
@@ -56,6 +65,14 @@ export function PetActionMenu({
         onClick={onToggleChat}
       >
         <ChatIcon />
+      </button>
+      <button
+        className="pet-action-button"
+        type="button"
+        aria-label="设置"
+        data-tooltip="设置"
+      >
+        <SettingsIcon />
       </button>
     </nav>
   );
