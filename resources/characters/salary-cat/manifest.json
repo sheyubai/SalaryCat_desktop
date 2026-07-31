@@ -1,0 +1,16 @@
+{
+  "id": "salary-cat",
+  "name": "月薪喵",
+  "version": "1.0.0",
+  "defaultState": "idle",
+  "animations": {
+    "idle": "cat.GIF",
+    "happy": "cat.GIF",
+    "sleep": "cat.GIF",
+    "thinking": "cat.GIF",
+    "working": "cat.GIF"
+  },
+  "sounds": {
+    "theme": "music.mp3"
+  }
+}

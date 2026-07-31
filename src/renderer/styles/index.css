@@ -1,0 +1,303 @@
+:root {
+  color: #31251f;
+  font-family:
+    Inter, "Microsoft YaHei", system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+  background: transparent;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: transparent;
+  user-select: none;
+}
+
+button {
+  font: inherit;
+}
+
+.pet-stage {
+  /* 猫、按钮、输入框仍固定在底部 240×240 区域。 */
+  /* Electron 窗口上方另外预留 80px，供回答框向上移动。 */
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 240px;
+  height: 240px;
+  overflow: visible;
+  padding: 0;
+  -webkit-app-region: no-drag;
+}
+
+.pet-hitbox {
+  /* 只负责点击和拖拽，不控制小猫图片的显示大小。 */
+  position: absolute;
+  z-index: 2;
+  /* 拖拽区域距离窗口顶部；增大时向下移动。 */
+  top: 38px;
+  /* 拖拽区域距离窗口左侧；增大时向右移动。 */
+  left: 41px;
+  /* 拖拽区域宽高，数值越小，可拖动范围越小。 */
+  width: 174px;
+  height: 157px;
+  cursor: grab;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  -webkit-app-region: no-drag;
+  touch-action: none;
+}
+
+.pet-hitbox:active {
+  cursor: grabbing;
+}
+
+.pet-sprite {
+  /* 小猫图片的视觉层，不接收鼠标事件。 */
+  position: absolute;
+  z-index: 1;
+  /* 控制小猫图片上下位置；增大 top 会向下移动。 */
+  top: 0;
+  /* 控制小猫图片左右位置；增大 left 会向右移动。 */
+  left: 18px;
+  /* 控制小猫 GIF 画布的显示大小。 */
+  width: 240px;
+  height: 240px;
+  object-fit: contain;
+  pointer-events: none;
+  filter: drop-shadow(0 8px 8px rgb(0 0 0 / 18%));
+}
+
+.speech-bubble,
+.loading-bubble,
+.error-bubble {
+  position: absolute;
+  z-index: 8;
+  border: 1px solid rgb(82 58 45 / 16%);
+  border-radius: 16px;
+  background: rgb(255 250 245 / 94%);
+  box-shadow: 0 6px 24px rgb(0 0 0 / 14%);
+  color: #31251f;
+  padding: 9px 13px;
+  text-align: center;
+  -webkit-app-region: no-drag;
+}
+
+.speech-bubble {
+  /* 小猫回答的漫画气泡。 */
+  /* 不使用顶部定位，让气泡高度随回答内容自动变化。 */
+  top: auto;
+  /* 固定气泡底边；文字变多时只会向上扩展。 */
+  /* 数值增大时整个回答框向上移动，减小时向下移动。 */
+  bottom: 210px;
+  /* 距离窗口右侧；增大时回答框向左移动。 */
+  right: 40px;
+  /* 回答框允许使用的最大宽度。 */
+  max-width: 220px;
+  padding: 9px 13px;
+  border: 2px solid #4b3a32;
+  border-radius: 20px;
+  background: #fffdf9;
+  box-shadow: 3px 4px 0 rgb(75 58 50 / 20%);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  text-align: left;
+  white-space: normal;
+}
+
+.speech-bubble::before,
+.speech-bubble::after {
+  position: absolute;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  content: "";
+}
+
+.speech-bubble::before {
+  /* 漫画气泡尖角的深色外边框位置。 */
+  right: 20px;
+  bottom: -12px;
+  border-width: 12px 10px 0;
+  border-color: #4b3a32 transparent transparent;
+}
+
+.speech-bubble::after {
+  /* 漫画气泡尖角的白色内部位置。 */
+  right: 22px;
+  bottom: -8px;
+  border-width: 9px 8px 0;
+  border-color: #fffdf9 transparent transparent;
+}
+
+.loading-bubble,
+.error-bubble {
+  top: 50%;
+  left: 50%;
+  max-width: calc(100% - 24px);
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+}
+
+.error-bubble {
+  color: #8b1e1e;
+  white-space: normal;
+}
+
+.pet-action-menu {
+  /* 音乐和对话按钮组成的左侧按钮栏。 */
+  position: absolute;
+  z-index: 5;
+  /* 按钮栏中心距离窗口顶部；增大时整体向下移动。 */
+  top: 120px;
+  /* 按钮栏距离窗口左侧；增大时整体向右移动。 */
+  left: 4px;
+  display: flex;
+  /* column 表示按钮上下排列；改成 row 会左右排列。 */
+  flex-direction: column;
+  /* 两个按钮之间的间距。 */
+  gap: 7px;
+  /* 让 top 对准整个按钮栏的垂直中心，而不是顶部。 */
+  transform: translateY(-50%);
+}
+
+.pet-action-button {
+  position: relative;
+  display: grid;
+  /* 单个圆形按钮的宽度和高度。 */
+  width: 36px;
+  height: 36px;
+  cursor: pointer;
+  place-items: center;
+  padding: 8px;
+  border: 1px solid rgb(82 58 45 / 18%);
+  border-radius: 50%;
+  background: rgb(255 250 245 / 94%);
+  box-shadow: 0 4px 14px rgb(0 0 0 / 16%);
+  color: #705345;
+}
+
+.pet-action-button:hover,
+.pet-action-button.is-active {
+  background: #fff0e5;
+  color: #d35f45;
+}
+
+.pet-action-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.pet-action-button svg,
+.pet-chat-input svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.pet-action-button .icon-slash {
+  stroke: #b54545;
+  stroke-width: 2.4;
+}
+
+.pet-action-button::after {
+  /* 鼠标悬浮时显示的“开启音乐/开始对话”提示框。 */
+  position: absolute;
+  /* 让提示框与按钮垂直居中。 */
+  top: 50%;
+  /* 提示框显示在按钮右侧；7px 是按钮与提示框的距离。 */
+  left: calc(100% + 7px);
+  visibility: hidden;
+  width: max-content;
+  padding: 4px 7px;
+  border-radius: 7px;
+  background: rgb(49 37 31 / 90%);
+  color: white;
+  content: attr(data-tooltip);
+  font-size: 12px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-50%);
+  transition: opacity 120ms ease;
+}
+
+.pet-action-button:hover::after,
+.pet-action-button:focus-visible::after {
+  visibility: visible;
+  opacity: 1;
+}
+
+.pet-chat-input {
+  /* 底部对话输入框。 */
+  position: absolute;
+  z-index: 5;
+  /* 输入框距离窗口右侧；增大时右边缘向左收缩。 */
+  right: 10px;
+  /* 输入框距离窗口底部；增大时输入框向上移动。 */
+  bottom: -10px;
+  /* 输入框距离窗口左侧；增大时左边缘向右收缩。 */
+  left: 20px;
+  display: flex;
+  /* 输入框整体高度。 */
+  height: 38px;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 4px 4px 11px;
+  border: 1px solid rgb(82 58 45 / 18%);
+  border-radius: 19px;
+  background: rgb(255 250 245 / 96%);
+  box-shadow: 0 5px 18px rgb(0 0 0 / 16%);
+}
+
+.pet-chat-input input {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #31251f;
+}
+
+.pet-chat-input input::placeholder {
+  color: #9b8174;
+}
+
+.pet-chat-input button {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  cursor: pointer;
+  place-items: center;
+  padding: 6px;
+  border: 0;
+  border-radius: 50%;
+  background: #e8795f;
+  color: white;
+}
+
+.pet-chat-input button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pet-sprite {
+    filter: none;
+  }
+}
