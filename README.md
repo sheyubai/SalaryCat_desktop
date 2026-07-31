@@ -1,3 +1,4 @@
-<img width="528" height="397" alt="image" src="https://github.com/user-attachments/assets/f02a538d-aabf-4d84-b7e9-3f023245e7a1" />
+<img width="483" height="254" alt="image" src="https://github.com/user-attachments/assets/fab857de-ad10-4b1d-abef-e5865bdd96d4" />
+
 
  一只可爱的桌面月薪猫 🤗
