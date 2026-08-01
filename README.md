@@ -2,6 +2,18 @@
 
 一只可爱的桌面月薪猫，基于 Electron、React 和 TypeScript。它常驻系统托盘，可以拖动、播放角色音乐，并通过独立的 FastAPI 后端与 OpenAI-compatible 模型对话。
 
+## 截图
+
+<img width="311" height="287" alt="桌宠界面" src="https://github.com/user-attachments/assets/377c058d-3437-4b94-b85d-2cccc8cd0e26" />
+<img width="296" height="278" alt="聊天界面" src="https://github.com/user-attachments/assets/70d4430a-8329-40aa-8f37-7963f7c9ba0b" />
+<img width="285" height="293" alt="角色界面" src="https://github.com/user-attachments/assets/db2610e0-1466-4cec-8411-5e86129dc73e" />
+
+<img width="353" height="299" alt="image" src="https://github.com/user-attachments/assets/52e9814e-ad28-4998-b0ce-4a35ede421b5" />
+<img width="422" height="339" alt="image" src="https://github.com/user-attachments/assets/4bd97916-2add-4284-b719-4f045ba16f57" />
+<img width="620" height="377" alt="image" src="https://github.com/user-attachments/assets/3b164da5-0261-4132-bd5b-7098b3788a54" />
+<img width="528" height="338" alt="image" src="https://github.com/user-attachments/assets/3efbfa4c-2fcd-47ae-b9ba-db09cea7a057" />
+
+
 ## 功能
 
 - 桌面悬浮桌宠、拖动和系统托盘
@@ -123,16 +135,6 @@ npm run dev
 
 睡眠提示集中在 `src/shared/defaultConfig.ts` 的 `behavior.sleepMessages`。思考、错误和音乐提示位于 `src/renderer/scripts/pet/Pet.tsx`。
 
-## 截图
-
-<img width="311" height="287" alt="桌宠界面" src="https://github.com/user-attachments/assets/377c058d-3437-4b94-b85d-2cccc8cd0e26" />
-<img width="296" height="278" alt="聊天界面" src="https://github.com/user-attachments/assets/70d4430a-8329-40aa-8f37-7963f7c9ba0b" />
-<img width="285" height="293" alt="角色界面" src="https://github.com/user-attachments/assets/db2610e0-1466-4cec-8411-5e86129dc73e" />
-
-<img width="353" height="299" alt="image" src="https://github.com/user-attachments/assets/52e9814e-ad28-4998-b0ce-4a35ede421b5" />
-<img width="422" height="339" alt="image" src="https://github.com/user-attachments/assets/4bd97916-2add-4284-b719-4f045ba16f57" />
-<img width="620" height="377" alt="image" src="https://github.com/user-attachments/assets/3b164da5-0261-4132-bd5b-7098b3788a54" />
-<img width="528" height="338" alt="image" src="https://github.com/user-attachments/assets/3efbfa4c-2fcd-47ae-b9ba-db09cea7a057" />
 
 
 
