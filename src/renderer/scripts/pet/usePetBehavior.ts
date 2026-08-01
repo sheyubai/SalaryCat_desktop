@@ -11,7 +11,11 @@ export function usePetBehavior() {
   const scheduleSleep = useCallback(() => {
     window.clearTimeout(idleTimer.current);
     idleTimer.current = window.setTimeout(
-      () => setState("sleep", "呼噜…"),
+      () => {
+        const messages = DEFAULT_CONFIG.behavior.sleepMessages;
+        const message = messages[Math.floor(Math.random() * messages.length)];
+        setState("sleep", message);
+      },
       DEFAULT_CONFIG.behavior.sleepAfterMs
     );
   }, [setState]);
@@ -26,6 +30,18 @@ export function usePetBehavior() {
     }, durationMs);
   }, [scheduleSleep, setState]);
 
+  const showPersistentMessage = useCallback((message: string) => {
+    window.clearTimeout(idleTimer.current);
+    window.clearTimeout(reactionTimer.current);
+    setState("happy", message);
+  }, [setState]);
+
+  const dismissMessage = useCallback(() => {
+    window.clearTimeout(reactionTimer.current);
+    setState("idle");
+    scheduleSleep();
+  }, [scheduleSleep, setState]);
+
   useEffect(() => {
     scheduleSleep();
     return () => {
@@ -34,5 +50,5 @@ export function usePetBehavior() {
     };
   }, [scheduleSleep]);
 
-  return { wake };
+  return { wake, showPersistentMessage, dismissMessage };
 }

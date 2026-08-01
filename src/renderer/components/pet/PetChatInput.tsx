@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
 interface PetChatInputProps {
-  onSend: (message: string) => void;
+  onSend: (message: string) => Promise<void>;
+  disabled?: boolean;
 }
 
-export function PetChatInput({ onSend }: PetChatInputProps) {
+export function PetChatInput({ onSend, disabled = false }: PetChatInputProps) {
   const [value, setValue] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -12,14 +13,14 @@ export function PetChatInput({ onSend }: PetChatInputProps) {
     inputRef.current?.focus();
   }, []);
 
-  function submit(event: FormEvent<HTMLFormElement>): void {
+  async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     const message = value.trim();
     if (!message) {
       return;
     }
-    onSend(message);
     setValue("");
+    await onSend(message);
     inputRef.current?.focus();
   }
 
@@ -30,10 +31,11 @@ export function PetChatInput({ onSend }: PetChatInputProps) {
         value={value}
         maxLength={120}
         aria-label="对月薪喵说话"
-        placeholder="和月薪喵说点什么…"
+        placeholder="和月薪喵说点什么..."
+        disabled={disabled}
         onChange={(event) => setValue(event.target.value)}
       />
-      <button type="submit" aria-label="发送" title="发送" disabled={!value.trim()}>
+      <button type="submit" aria-label="发送" title="发送" disabled={disabled || !value.trim()}>
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="m4 4 17 8-17 8 3-8-3-8Zm3 8h14" />
         </svg>

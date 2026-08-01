@@ -16,3 +16,6 @@ out/
 release/
 npm-debug.log*
 .idea/
+.env
+.pytest_cache/
+.ruff_cache/

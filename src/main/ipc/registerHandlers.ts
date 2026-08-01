@@ -1,14 +1,39 @@
-import { BrowserWindow, ipcMain, screen } from "electron";
+import { BrowserWindow, ipcMain, net, screen } from "electron";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import {
   IPC_CHANNELS,
+  type ChatRequest,
+  type ChatResponse,
   type CharacterManifest,
   type WindowPosition,
   type WindowSize
 } from "../../shared/contracts";
 import { resourcesDirectory } from "../paths";
+
+const apiBaseUrl = (process.env.SALARY_CAT_API_URL ?? "http://127.0.0.1:8000")
+  .replace(/\/$/, "");
+
+interface BackendStreamEvent {
+  type: "start" | "delta" | "done" | "error";
+  conversation_id?: string;
+  message_id?: string;
+  text?: string;
+  detail?: string;
+}
+
+function errorDetail(body: unknown, status: number): string {
+  if (
+    typeof body === "object" &&
+    body !== null &&
+    "detail" in body &&
+    typeof body.detail === "string"
+  ) {
+    return body.detail;
+  }
+  return `后端请求失败（HTTP ${status}）。`;
+}
 
 function validateCharacterId(characterId: string): void {
   if (!/^[a-z0-9-]+$/i.test(characterId)) {
@@ -17,6 +42,93 @@ function validateCharacterId(characterId: string): void {
 }
 
 export function registerIpcHandlers(): void {
+  ipcMain.handle(
+    IPC_CHANNELS.sendChatMessage,
+    async (
+      event,
+      payload: { requestId: string; request: ChatRequest }
+    ): Promise<ChatResponse> => {
+      const { requestId, request } = payload;
+      const message = request.message.trim();
+      if (!message || message.length > 4000) {
+        throw new Error("消息内容无效。");
+      }
+
+      let response: Response;
+      try {
+        response = await net.fetch(`${apiBaseUrl}/api/v1/chat/stream`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message,
+            conversation_id: request.conversationId
+          })
+        });
+      } catch {
+        throw new Error("无法连接月薪喵后端，请确认后端已在 8000 端口启动。");
+      }
+
+      if (!response.ok) {
+        const body: unknown = await response.json().catch(() => null);
+        throw new Error(errorDetail(body, response.status));
+      }
+      if (!response.body) {
+        throw new Error("后端没有返回可读取的数据流。");
+      }
+
+      let conversationId = "";
+      let messageId = "";
+      let answer = "";
+      let buffer = "";
+      const decoder = new TextDecoder();
+      const reader = response.body.getReader();
+
+      const consumeLine = (line: string): void => {
+        if (!line.trim()) {
+          return;
+        }
+        const streamEvent = JSON.parse(line) as BackendStreamEvent;
+        if (streamEvent.type === "start" || streamEvent.type === "done") {
+          conversationId = streamEvent.conversation_id ?? conversationId;
+          messageId = streamEvent.message_id ?? messageId;
+        } else if (streamEvent.type === "delta" && streamEvent.text) {
+          answer += streamEvent.text;
+          if (!event.sender.isDestroyed()) {
+            event.sender.send(IPC_CHANNELS.chatDelta, {
+              requestId,
+              text: streamEvent.text
+            });
+          }
+        } else if (streamEvent.type === "error") {
+          throw new Error(streamEvent.detail || "模型生成回复失败。");
+        }
+      };
+
+      while (true) {
+        const { done, value } = await reader.read();
+        buffer += decoder.decode(value, { stream: !done });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          consumeLine(line);
+        }
+        if (done) {
+          break;
+        }
+      }
+      consumeLine(buffer);
+
+      if (!conversationId || !messageId) {
+        throw new Error("后端流式响应未正常完成。");
+      }
+      return {
+        conversationId,
+        messageId,
+        answer
+      };
+    }
+  );
+
   ipcMain.handle(
     IPC_CHANNELS.characterManifest,
     async (_event, characterId: string): Promise<CharacterManifest> => {
@@ -87,6 +199,18 @@ export function registerIpcHandlers(): void {
       );
 
       window.setBounds({ x, y, width, height });
+    }
+  );
+
+  ipcMain.on(
+    IPC_CHANNELS.setMousePassthrough,
+    (event, enabled: boolean): void => {
+      if (typeof enabled !== "boolean") {
+        return;
+      }
+      BrowserWindow.fromWebContents(event.sender)?.setIgnoreMouseEvents(enabled, {
+        forward: true
+      });
     }
   );
 }

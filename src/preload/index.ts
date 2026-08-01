@@ -2,6 +2,8 @@ import {contextBridge, ipcRenderer} from "electron";
 
 import {
     IPC_CHANNELS,
+    type ChatRequest,
+    type ChatResponse,
     type CharacterManifest,
     type PetAPI,
     type WindowPosition,
@@ -24,7 +26,27 @@ const petAPI: PetAPI = {
     moveWindow: (position: WindowPosition): void =>
         ipcRenderer.send(IPC_CHANNELS.moveWindow, position),
     setWindowSize: (size: WindowSize): void =>
-        ipcRenderer.send(IPC_CHANNELS.setWindowSize, size)
+        ipcRenderer.send(IPC_CHANNELS.setWindowSize, size),
+    setMousePassthrough: (enabled: boolean): void =>
+        ipcRenderer.send(IPC_CHANNELS.setMousePassthrough, enabled),
+    sendChatMessage: (
+        request: ChatRequest,
+        onDelta?: (text: string) => void
+    ): Promise<ChatResponse> => {
+        const requestId = crypto.randomUUID();
+        const listener = (
+            _event: Electron.IpcRendererEvent,
+            payload: {requestId: string; text: string}
+        ): void => {
+            if (payload.requestId === requestId) {
+                onDelta?.(payload.text);
+            }
+        };
+        ipcRenderer.on(IPC_CHANNELS.chatDelta, listener);
+        return ipcRenderer
+            .invoke(IPC_CHANNELS.sendChatMessage, {requestId, request})
+            .finally(() => ipcRenderer.removeListener(IPC_CHANNELS.chatDelta, listener));
+    }
 };
 
 contextBridge.exposeInMainWorld("petAPI", petAPI);

@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type {
   CharacterManifest,
@@ -8,7 +8,6 @@ import { DEFAULT_CONFIG } from "../../../shared/defaultConfig";
 import { PetActionMenu } from "../../components/pet/PetActionMenu";
 import { PetChatInput } from "../../components/pet/PetChatInput";
 import { PetSpeechBubble } from "../../components/pet/PetSpeechBubble";
-import { createPetReply } from "./createPetReply";
 import { usePetBehavior } from "./usePetBehavior";
 import { usePetStore } from "./petStore";
 
@@ -19,10 +18,14 @@ interface PetProps {
 export function Pet({ manifest }: PetProps) {
   const state = usePetStore((store) => store.state);
   const message = usePetStore((store) => store.message);
-  const { wake } = usePetBehavior();
+  const setState = usePetStore((store) => store.setState);
+  const { wake, showPersistentMessage, dismissMessage } = usePetBehavior();
   const [menuOpen, setMenuOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [musicEnabled, setMusicEnabled] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [streaming, setStreaming] = useState(false);
+  const conversationId = useRef<string | undefined>(undefined);
   const audio = useRef<HTMLAudioElement>(null);
   const drag = useRef<{
     pointerX: number;
@@ -36,6 +39,39 @@ export function Pet({ manifest }: PetProps) {
     manifest.animations[manifest.defaultState] ??
     manifest.animations.idle;
   const music = manifest.sounds?.theme;
+
+  useEffect(() => {
+    let passthrough = false;
+    const interactiveSelector = [
+      ".pet-hitbox",
+      ".pet-action-button",
+      ".pet-chat-input",
+      ".speech-bubble"
+    ].join(",");
+
+    const updateMousePassthrough = (event: MouseEvent): void => {
+      const target = document.elementFromPoint(event.clientX, event.clientY);
+      const nextPassthrough = !target?.closest(interactiveSelector);
+      if (nextPassthrough !== passthrough) {
+        passthrough = nextPassthrough;
+        window.petAPI.setMousePassthrough(passthrough);
+      }
+    };
+    const enableMousePassthrough = (): void => {
+      passthrough = true;
+      window.petAPI.setMousePassthrough(true);
+    };
+
+    window.addEventListener("mousemove", updateMousePassthrough);
+    window.addEventListener("mouseleave", enableMousePassthrough);
+    window.petAPI.setMousePassthrough(true);
+
+    return () => {
+      window.removeEventListener("mousemove", updateMousePassthrough);
+      window.removeEventListener("mouseleave", enableMousePassthrough);
+      window.petAPI.setMousePassthrough(false);
+    };
+  }, []);
 
   if (!animation) {
     return <div className="error-bubble">角色包没有可用动画。</div>;
@@ -107,13 +143,46 @@ export function Pet({ manifest }: PetProps) {
     }
   }
 
-  function sendMessage(input: string): void {
-    wake(createPetReply(input), DEFAULT_CONFIG.behavior.replyDurationMs);
+  async function sendMessage(input: string): Promise<void> {
+    if (sending) {
+      return;
+    }
+    setSending(true);
+    setStreaming(true);
+    setState("thinking", "让本喵想想哦...");
+    try {
+      let streamedAnswer = "";
+      const response = await window.petAPI.sendChatMessage({
+        message: input,
+        conversationId: conversationId.current
+      }, (text) => {
+        streamedAnswer += text;
+        setState("happy", streamedAnswer);
+      });
+      conversationId.current = response.conversationId;
+      showPersistentMessage(response.answer);
+    } catch (error) {
+      const reason = error instanceof Error
+        ? error.message.replace(/^Error invoking remote method '[^']+': Error: /, "")
+        : "请求失败，请稍后重试。";
+      showPersistentMessage(reason);
+    } finally {
+      setStreaming(false);
+      setSending(false);
+    }
   }
 
   return (
     <main className="pet-stage" aria-label={manifest.name}>
-      {message && <PetSpeechBubble message={message} />}
+      {message && (
+        <PetSpeechBubble
+          key={state}
+          message={message}
+          thinking={state === "thinking"}
+          streaming={streaming}
+          onDismiss={dismissMessage}
+        />
+      )}
       {menuOpen && (
         <PetActionMenu
           chatOpen={chatOpen}
@@ -141,7 +210,7 @@ export function Pet({ manifest }: PetProps) {
           drag.current = null;
         }}
       />
-      {chatOpen && <PetChatInput onSend={sendMessage} />}
+      {chatOpen && <PetChatInput onSend={sendMessage} disabled={sending} />}
       {music && (
         <audio
           ref={audio}

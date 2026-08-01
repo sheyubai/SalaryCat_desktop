@@ -103,9 +103,12 @@ button {
   /* 数值增大时整个回答框向上移动，减小时向下移动。 */
   bottom: 210px;
   /* 距离窗口右侧；增大时回答框向左移动。 */
-  right: 40px;
-  /* 回答框允许使用的最大宽度。 */
-  max-width: 220px;
+  right: 20px;
+  /* 短回复保持紧凑，长回复逐步扩展到最大阅读宽度。 */
+  /* max-content 允许气泡突破 240px 的小猫容器并向左扩展。 */
+  width: max-content;
+  min-width: 120px;
+  max-width: min(540px, calc(100vw - 24px));
   padding: 9px 13px;
   border: 2px solid #4b3a32;
   border-radius: 20px;
@@ -116,6 +119,133 @@ button {
   overflow-wrap: anywhere;
   text-align: left;
   white-space: normal;
+  animation: speech-bubble-expand 240ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  transform-origin: calc(100% - 28px) 100%;
+}
+
+.speech-bubble.is-thinking {
+  min-width: 148px;
+}
+
+.thinking-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.thinking-spinner {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  border: 2px solid rgb(155 129 116 / 28%);
+  border-top-color: #e8795f;
+  border-radius: 50%;
+  animation: thinking-spin 700ms linear infinite;
+}
+
+@keyframes speech-bubble-expand {
+  from {
+    opacity: 0;
+    transform: scale(0.3, 0.2);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes thinking-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.speech-bubble-content {
+  /* 长回复限制在固定高度内，超出的内容可用滚轮查看。 */
+  max-height: 170px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  /* 隐藏滚动条，但鼠标滚轮和触控板滚动仍然可用。 */
+  scrollbar-width: none;
+}
+
+.speech-bubble-content::-webkit-scrollbar {
+  display: none;
+}
+
+.speech-scroll-hint {
+  position: absolute;
+  right: 13px;
+  bottom: 7px;
+  left: 13px;
+  display: flex;
+  height: 30px;
+  align-items: flex-end;
+  justify-content: center;
+  background: linear-gradient(to bottom, transparent, #fffdf9 72%);
+  color: #9b8174;
+  font-size: 18px;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.speech-scroll-hint span {
+  animation: scroll-hint-bounce 1.4s ease-in-out infinite;
+}
+
+@keyframes scroll-hint-bounce {
+  0%,
+  100% {
+    transform: translateY(-1px);
+  }
+
+  50% {
+    transform: translateY(2px);
+  }
+}
+
+.speech-bubble-content > :first-child {
+  margin-top: 0;
+}
+
+.speech-bubble-content > :last-child {
+  margin-bottom: 0;
+}
+
+.speech-bubble-content p,
+.speech-bubble-content ul,
+.speech-bubble-content ol,
+.speech-bubble-content pre {
+  margin: 0 0 7px;
+}
+
+.speech-bubble-content ul,
+.speech-bubble-content ol {
+  padding-left: 20px;
+}
+
+.speech-bubble-content code {
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: rgb(75 58 50 / 10%);
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 0.92em;
+}
+
+.speech-bubble-content pre {
+  overflow-x: hidden;
+  padding: 7px;
+  border-radius: 7px;
+  background: rgb(75 58 50 / 10%);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.speech-bubble-content pre code {
+  padding: 0;
+  background: transparent;
 }
 
 .speech-bubble::before,
@@ -302,5 +432,11 @@ button {
 @media (prefers-reduced-motion: reduce) {
   .pet-sprite {
     filter: none;
+  }
+
+  .speech-bubble,
+  .thinking-spinner,
+  .speech-scroll-hint span {
+    animation: none;
   }
 }
