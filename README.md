@@ -6,7 +6,7 @@
 - `resources/`：桌宠图片、音乐和角色资源
 - `backend/`：FastAPI + LangGraph + MySQL AI 后端
 
-后端启动方式见 [backend/README.md](backend/README.md)。
+
 
 
 <img width="311" height="287" alt="image" src="https://github.com/user-attachments/assets/377c058d-3437-4b94-b85d-2cccc8cd0e26" />
