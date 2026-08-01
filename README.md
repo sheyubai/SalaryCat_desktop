@@ -129,3 +129,5 @@ npm run dev
 <img width="296" height="278" alt="聊天界面" src="https://github.com/user-attachments/assets/70d4430a-8329-40aa-8f37-7963f7c9ba0b" />
 <img width="285" height="293" alt="角色界面" src="https://github.com/user-attachments/assets/db2610e0-1466-4cec-8411-5e86129dc73e" />
 <img width="528" height="338" alt="image" src="https://github.com/user-attachments/assets/3efbfa4c-2fcd-47ae-b9ba-db09cea7a057" />
+<img width="353" height="299" alt="image" src="https://github.com/user-attachments/assets/52e9814e-ad28-4998-b0ce-4a35ede421b5" />
+
