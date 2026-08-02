@@ -33,7 +33,9 @@ export function createPetWindow(): BrowserWindow {
     }
   });
 
-  window.setAlwaysOnTop(true, "floating");
+  // Use Electron's highest window level so the desktop pet stays above
+  // ordinary and other always-on-top application windows.
+  window.setAlwaysOnTop(true, "screen-saver");
   window.setMenuBarVisibility(false);
   window.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
   window.once("ready-to-show", () => window.show());

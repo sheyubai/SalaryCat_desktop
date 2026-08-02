@@ -10,21 +10,28 @@ import { PetChatInput } from "../../components/pet/PetChatInput";
 import { PetSpeechBubble } from "../../components/pet/PetSpeechBubble";
 import { usePetBehavior } from "./usePetBehavior";
 import { usePetStore } from "./petStore";
+import {
+  loadLlmSettings,
+  loadPreferences,
+  preferencesChannelName
+} from "./userPreferences";
 
 interface PetProps {
   manifest: CharacterManifest;
 }
 
 export function Pet({ manifest }: PetProps) {
+  const [preferences, setPreferences] = useState(loadPreferences);
   const state = usePetStore((store) => store.state);
   const message = usePetStore((store) => store.message);
   const setState = usePetStore((store) => store.setState);
-  const { wake, showPersistentMessage, dismissMessage } = usePetBehavior();
+  const { wake, showPersistentMessage, dismissMessage } = usePetBehavior(preferences.behavior);
   const [menuOpen, setMenuOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [musicEnabled, setMusicEnabled] = useState(false);
   const [sending, setSending] = useState(false);
   const [streaming, setStreaming] = useState(false);
+  const [customMusicUrl, setCustomMusicUrl] = useState("");
   const conversationId = useRef<string | undefined>(undefined);
   const audio = useRef<HTMLAudioElement>(null);
   const drag = useRef<{
@@ -38,7 +45,7 @@ export function Pet({ manifest }: PetProps) {
     manifest.animations[state] ??
     manifest.animations[manifest.defaultState] ??
     manifest.animations.idle;
-  const music = manifest.sounds?.theme;
+  const music = customMusicUrl || manifest.sounds?.theme;
 
   useEffect(() => {
     let passthrough = false;
@@ -46,7 +53,9 @@ export function Pet({ manifest }: PetProps) {
       ".pet-hitbox",
       ".pet-action-button",
       ".pet-chat-input",
-      ".speech-bubble"
+      ".speech-bubble",
+      ".settings-backdrop",
+      ".settings-modal"
     ].join(",");
 
     const updateMousePassthrough = (event: MouseEvent): void => {
@@ -72,6 +81,51 @@ export function Pet({ manifest }: PetProps) {
       window.petAPI.setMousePassthrough(false);
     };
   }, []);
+
+  useEffect(() => {
+    const channel = new BroadcastChannel(preferencesChannelName);
+    channel.onmessage = () => setPreferences(loadPreferences());
+    return () => channel.close();
+  }, []);
+
+  useEffect(() => {
+    window.petAPI.setAlwaysOnTop(preferences.appearance.alwaysOnTop);
+    window.petAPI.setWindowSize({
+      width: Math.round(DEFAULT_CONFIG.window.width * preferences.appearance.scale),
+      height: Math.round(DEFAULT_CONFIG.window.height * preferences.appearance.scale)
+    });
+  }, [preferences.appearance.alwaysOnTop, preferences.appearance.scale]);
+
+  useEffect(() => {
+    let active = true;
+    if (!preferences.music.sourcePath) {
+      setCustomMusicUrl("");
+      return () => {
+        active = false;
+      };
+    }
+    window.petAPI
+      .getMusicUrl(preferences.music.sourcePath)
+      .then((url) => {
+        if (active) {
+          setCustomMusicUrl(url);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setCustomMusicUrl("");
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [preferences.music.sourcePath]);
+
+  useEffect(() => {
+    if (audio.current) {
+      audio.current.volume = preferences.music.volume / 100;
+    }
+  }, [preferences.music.volume]);
 
   if (!animation) {
     return <div className="error-bubble">角色包没有可用动画。</div>;
@@ -152,9 +206,13 @@ export function Pet({ manifest }: PetProps) {
     setState("thinking", "让本喵想想哦...");
     try {
       let streamedAnswer = "";
+      const settings = loadLlmSettings();
       const response = await window.petAPI.sendChatMessage({
         message: input,
-        conversationId: conversationId.current
+        conversationId: conversationId.current,
+        apiKey: settings.apiKey || undefined,
+        baseUrl: settings.baseUrl || undefined,
+        model: settings.model || undefined
       }, (text) => {
         streamedAnswer += text;
         setState("happy", streamedAnswer);
@@ -173,13 +231,22 @@ export function Pet({ manifest }: PetProps) {
   }
 
   return (
-    <main className="pet-stage" aria-label={manifest.name}>
+    <main
+      className="pet-stage"
+      aria-label={manifest.name}
+      style={{
+        opacity: preferences.appearance.opacity / 100,
+        transform: `scale(${preferences.appearance.scale})`,
+        transformOrigin: "right bottom"
+      }}
+    >
       {message && (
         <PetSpeechBubble
           key={state}
           message={message}
           thinking={state === "thinking"}
           streaming={streaming}
+          dismissAfterMs={preferences.behavior.dismissAfterSeconds * 1_000}
           onDismiss={dismissMessage}
         />
       )}
@@ -190,6 +257,7 @@ export function Pet({ manifest }: PetProps) {
           musicEnabled={musicEnabled}
           onToggleChat={() => setChatOpen((open) => !open)}
           onToggleMusic={() => void toggleMusic()}
+          onOpenSettings={() => void window.petAPI.openSettingsWindow()}
         />
       )}
       <img
@@ -214,9 +282,10 @@ export function Pet({ manifest }: PetProps) {
       {music && (
         <audio
           ref={audio}
-          src={window.petAPI.assetUrl(music)}
-          loop
+          src={customMusicUrl || window.petAPI.assetUrl(music)}
+          loop={preferences.music.loop}
           preload="metadata"
+          onEnded={() => setMusicEnabled(false)}
         />
       )}
     </main>

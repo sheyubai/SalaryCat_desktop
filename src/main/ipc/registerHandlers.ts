@@ -1,6 +1,8 @@
-import { BrowserWindow, ipcMain, net, screen } from "electron";
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
+import { BrowserWindow, dialog, ipcMain, net, screen, type OpenDialogOptions } from "electron";
+import { randomUUID } from "node:crypto";
+import { constants } from "node:fs";
+import { access, readFile } from "node:fs/promises";
+import { extname, join } from "node:path";
 
 import {
   IPC_CHANNELS,
@@ -14,6 +16,8 @@ import { resourcesDirectory } from "../paths";
 
 const apiBaseUrl = (process.env.SALARY_CAT_API_URL ?? "http://127.0.0.1:8000")
   .replace(/\/$/, "");
+const supportedAudioExtensions = new Set([".mp3", ".wav", ".ogg", ".m4a", ".flac"]);
+const registeredMusicFiles = new Map<string, string>();
 
 interface BackendStreamEvent {
   type: "start" | "delta" | "done" | "error";
@@ -41,6 +45,10 @@ function validateCharacterId(characterId: string): void {
   }
 }
 
+export function getRegisteredMusicFile(id: string): string | undefined {
+  return registeredMusicFiles.get(id);
+}
+
 export function registerIpcHandlers(): void {
   ipcMain.handle(
     IPC_CHANNELS.sendChatMessage,
@@ -61,7 +69,10 @@ export function registerIpcHandlers(): void {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             message,
-            conversation_id: request.conversationId
+            conversation_id: request.conversationId,
+            llm_api_key: request.apiKey,
+            llm_base_url: request.baseUrl,
+            llm_model: request.model
           })
         });
       } catch {
@@ -213,4 +224,41 @@ export function registerIpcHandlers(): void {
       });
     }
   );
+
+  ipcMain.on(IPC_CHANNELS.setAlwaysOnTop, (event, enabled: boolean): void => {
+    if (typeof enabled !== "boolean") {
+      return;
+    }
+    BrowserWindow.fromWebContents(event.sender)?.setAlwaysOnTop(
+      enabled,
+      enabled ? "screen-saver" : "normal"
+    );
+  });
+
+  ipcMain.handle(IPC_CHANNELS.selectMusicFile, async (event): Promise<string | null> => {
+    const options: OpenDialogOptions = {
+      title: "选择背景音乐",
+      properties: ["openFile"],
+      filters: [{ name: "音频文件", extensions: ["mp3", "wav", "ogg", "m4a", "flac"] }]
+    };
+    const window = BrowserWindow.fromWebContents(event.sender);
+    const result = window
+      ? await dialog.showOpenDialog(window, options)
+      : await dialog.showOpenDialog(options);
+    return result.canceled ? null : result.filePaths[0] ?? null;
+  });
+
+  ipcMain.handle(IPC_CHANNELS.getMusicUrl, async (_event, filePath: string): Promise<string> => {
+    if (typeof filePath !== "string" || !filePath) {
+      throw new Error("音乐文件路径无效。");
+    }
+    if (!supportedAudioExtensions.has(extname(filePath).toLowerCase())) {
+      throw new Error("仅支持常见音频格式。");
+    }
+    await access(filePath, constants.R_OK);
+    const musicId = randomUUID();
+    registeredMusicFiles.set(musicId, filePath);
+    return `salary-cat://music/${musicId}`;
+  });
+
 }

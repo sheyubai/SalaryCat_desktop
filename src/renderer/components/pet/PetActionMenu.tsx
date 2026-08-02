@@ -4,6 +4,7 @@ interface PetActionMenuProps {
   musicEnabled: boolean;
   onToggleChat: () => void;
   onToggleMusic: () => void;
+  onOpenSettings: () => void;
 }
 
 function MusicIcon({ enabled }: { enabled: boolean }) {
@@ -40,7 +41,8 @@ export function PetActionMenu({
   musicAvailable,
   musicEnabled,
   onToggleChat,
-  onToggleMusic
+  onToggleMusic,
+  onOpenSettings
 }: PetActionMenuProps) {
   const musicLabel = musicEnabled ? "关闭音乐" : "开启音乐";
   const chatLabel = chatOpen ? "收起对话" : "开始对话";
@@ -71,6 +73,7 @@ export function PetActionMenu({
         type="button"
         aria-label="设置"
         data-tooltip="设置"
+        onClick={onOpenSettings}
       >
         <SettingsIcon />
       </button>

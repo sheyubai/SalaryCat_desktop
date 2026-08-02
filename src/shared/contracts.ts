@@ -27,6 +27,39 @@ export interface WindowSize {
 export interface ChatRequest {
   message: string;
   conversationId?: string;
+  apiKey?: string;
+  baseUrl?: string;
+  model?: string;
+}
+
+export interface UserLlmSettings {
+  apiKey: string;
+  baseUrl: string;
+  model: string;
+}
+
+export interface UserAppearanceSettings {
+  scale: number;
+  opacity: number;
+  alwaysOnTop: boolean;
+}
+
+export interface UserBehaviorSettings {
+  sleepAfterSeconds: number;
+  dismissAfterSeconds: number;
+  sleepMessages: string[];
+}
+
+export interface UserPreferences {
+  appearance: UserAppearanceSettings;
+  behavior: UserBehaviorSettings;
+  music: UserMusicSettings;
+}
+
+export interface UserMusicSettings {
+  sourcePath: string;
+  volume: number;
+  loop: boolean;
 }
 
 export interface ChatResponse {
@@ -41,7 +74,13 @@ export interface PetAPI {
   getWindowPosition(): Promise<WindowPosition>;
   moveWindow(position: WindowPosition): void;
   setWindowSize(size: WindowSize): void;
+  openSettingsWindow(): Promise<void>;
+  closeSettingsWindow(): Promise<void>;
+  openProjectHomepage(): Promise<void>;
   setMousePassthrough(enabled: boolean): void;
+  setAlwaysOnTop(enabled: boolean): void;
+  selectMusicFile(): Promise<string | null>;
+  getMusicUrl(path: string): Promise<string>;
   sendChatMessage(
     request: ChatRequest,
     onDelta?: (text: string) => void
@@ -53,7 +92,13 @@ export const IPC_CHANNELS = {
   windowPosition: "window:position",
   moveWindow: "window:move",
   setWindowSize: "window:size",
+  openSettingsWindow: "settings:open",
+  closeSettingsWindow: "settings:close",
+  openProjectHomepage: "project:open-homepage",
   setMousePassthrough: "window:mouse-passthrough",
+  setAlwaysOnTop: "window:always-on-top",
+  selectMusicFile: "music:select-file",
+  getMusicUrl: "music:get-url",
   sendChatMessage: "chat:send",
   chatDelta: "chat:delta"
 } as const;

@@ -3,8 +3,12 @@ import { useEffect, useState } from "react";
 import type { CharacterManifest } from "../../../shared/contracts";
 import { DEFAULT_CONFIG } from "../../../shared/defaultConfig";
 import { Pet } from "../../scripts/pet/Pet";
+import { SettingsPage } from "./SettingsPage";
 
 export function PetPage() {
+  if (window.location.hash === "#settings") {
+    return <SettingsPage />;
+  }
   const [manifest, setManifest] = useState<CharacterManifest | null>(null);
   const [error, setError] = useState("");
 

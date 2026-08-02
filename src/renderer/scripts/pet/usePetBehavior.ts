@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef } from "react";
 
 import { DEFAULT_CONFIG } from "../../../shared/defaultConfig";
+import type { UserBehaviorSettings } from "../../../shared/contracts";
 import { usePetStore } from "./petStore";
 
-export function usePetBehavior() {
+export function usePetBehavior(behavior: UserBehaviorSettings) {
   const setState = usePetStore((store) => store.setState);
   const idleTimer = useRef<number | undefined>(undefined);
   const reactionTimer = useRef<number | undefined>(undefined);
@@ -12,13 +13,15 @@ export function usePetBehavior() {
     window.clearTimeout(idleTimer.current);
     idleTimer.current = window.setTimeout(
       () => {
-        const messages = DEFAULT_CONFIG.behavior.sleepMessages;
+        const messages = behavior.sleepMessages.length
+          ? behavior.sleepMessages
+          : DEFAULT_CONFIG.behavior.sleepMessages;
         const message = messages[Math.floor(Math.random() * messages.length)];
         setState("sleep", message);
       },
-      DEFAULT_CONFIG.behavior.sleepAfterMs
+      behavior.sleepAfterSeconds * 1_000
     );
-  }, [setState]);
+  }, [behavior.sleepAfterSeconds, behavior.sleepMessages, setState]);
 
   const wake = useCallback((message = "", durationMs: number = DEFAULT_CONFIG.behavior.happyDurationMs) => {
     setState("happy", message);

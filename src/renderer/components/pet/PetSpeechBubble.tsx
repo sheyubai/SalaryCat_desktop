@@ -6,6 +6,7 @@ interface PetSpeechBubbleProps {
   message: string;
   thinking?: boolean;
   streaming?: boolean;
+  dismissAfterMs?: number;
   onDismiss?: () => void;
 }
 
@@ -18,6 +19,7 @@ export function PetSpeechBubble({
   message,
   thinking = false,
   streaming = false,
+  dismissAfterMs = 40_000,
   onDismiss
 }: PetSpeechBubbleProps) {
   const contentRef = useRef<HTMLDivElement>(null);
@@ -31,7 +33,7 @@ export function PetSpeechBubble({
   function scheduleDismiss(): void {
     cancelDismiss();
     if (!thinking && !streaming && onDismiss) {
-      dismissTimer.current = window.setTimeout(onDismiss, 30_000);
+      dismissTimer.current = window.setTimeout(onDismiss, dismissAfterMs);
     }
   }
 
@@ -60,7 +62,7 @@ export function PetSpeechBubble({
   useEffect(() => {
     scheduleDismiss();
     return cancelDismiss;
-  }, [message, thinking, streaming, onDismiss]);
+  }, [message, thinking, streaming, dismissAfterMs, onDismiss]);
 
   return (
     <aside
