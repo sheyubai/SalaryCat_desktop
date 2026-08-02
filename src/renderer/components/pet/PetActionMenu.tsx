@@ -2,6 +2,7 @@ interface PetActionMenuProps {
   chatOpen: boolean;
   musicAvailable: boolean;
   musicEnabled: boolean;
+  settingsOpen: boolean;
   onToggleChat: () => void;
   onToggleMusic: () => void;
   onOpenSettings: () => void;
@@ -40,6 +41,7 @@ export function PetActionMenu({
   chatOpen,
   musicAvailable,
   musicEnabled,
+  settingsOpen,
   onToggleChat,
   onToggleMusic,
   onOpenSettings
@@ -69,7 +71,7 @@ export function PetActionMenu({
         <ChatIcon />
       </button>
       <button
-        className="pet-action-button"
+        className={`pet-action-button${settingsOpen ? " is-active" : ""}`}
         type="button"
         aria-label="设置"
         data-tooltip="设置"

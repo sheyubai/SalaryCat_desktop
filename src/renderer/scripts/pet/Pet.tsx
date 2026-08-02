@@ -31,9 +31,12 @@ export function Pet({ manifest }: PetProps) {
   const [musicEnabled, setMusicEnabled] = useState(false);
   const [sending, setSending] = useState(false);
   const [streaming, setStreaming] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [customMusicUrl, setCustomMusicUrl] = useState("");
   const conversationId = useRef<string | undefined>(undefined);
   const audio = useRef<HTMLAudioElement>(null);
+  const chatStartedAt = useRef<number | null>(null);
+  const danceStartedAt = useRef<number | null>(null);
   const drag = useRef<{
     pointerX: number;
     pointerY: number;
@@ -185,11 +188,13 @@ export function Pet({ manifest }: PetProps) {
     if (musicEnabled) {
       audio.current.pause();
       setMusicEnabled(false);
+      recordDuration("dance", danceStartedAt);
       return;
     }
     try {
       await audio.current.play();
       setMusicEnabled(true);
+      danceStartedAt.current = Date.now();
     } catch (error) {
       console.error("音乐播放失败：", error);
       setMusicEnabled(false);
@@ -230,6 +235,23 @@ export function Pet({ manifest }: PetProps) {
     }
   }
 
+  function recordDuration(kind: "chat" | "dance", startedAt: React.MutableRefObject<number | null>): void {
+    if (!startedAt.current) return;
+    const seconds = Math.floor((Date.now() - startedAt.current) / 1_000);
+    startedAt.current = null;
+    if (seconds > 0) void window.petAPI.recordUsageActivity(kind, seconds).catch(() => undefined);
+  }
+
+  function toggleChat(): void {
+    if (chatOpen) recordDuration("chat", chatStartedAt);
+    else chatStartedAt.current = Date.now();
+    setChatOpen((open) => !open);
+  }
+
+  async function toggleSettings(): Promise<void> {
+    setSettingsOpen(await window.petAPI.toggleSettingsWindow());
+  }
+
   return (
     <main
       className="pet-stage"
@@ -255,9 +277,10 @@ export function Pet({ manifest }: PetProps) {
           chatOpen={chatOpen}
           musicAvailable={Boolean(music)}
           musicEnabled={musicEnabled}
-          onToggleChat={() => setChatOpen((open) => !open)}
+          settingsOpen={settingsOpen}
+          onToggleChat={toggleChat}
           onToggleMusic={() => void toggleMusic()}
-          onOpenSettings={() => void window.petAPI.openSettingsWindow()}
+          onOpenSettings={() => void toggleSettings()}
         />
       )}
       <img
@@ -285,7 +308,7 @@ export function Pet({ manifest }: PetProps) {
           src={customMusicUrl || window.petAPI.assetUrl(music)}
           loop={preferences.music.loop}
           preload="metadata"
-          onEnded={() => setMusicEnabled(false)}
+          onEnded={() => { setMusicEnabled(false); recordDuration("dance", danceStartedAt); }}
         />
       )}
     </main>

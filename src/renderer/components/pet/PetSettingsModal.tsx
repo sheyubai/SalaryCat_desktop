@@ -1,18 +1,21 @@
 import { useEffect, useState, type FormEvent } from "react";
 
-import type { UserLlmSettings, UserMusicSettings, UserPreferences } from "../../../shared/contracts";
+import type { UsageStats, UserLlmSettings, UserMusicSettings, UserPreferences } from "../../../shared/contracts";
 
-type SettingsSection = "model" | "appearance" | "behavior" | "music" | "about";
+type SettingsSection = "usage" | "model" | "appearance" | "behavior" | "music" | "about";
 
 interface PetSettingsModalProps {
   settings: UserLlmSettings;
   preferences: UserPreferences;
+  usageStats: UsageStats | null;
+  appVersion: string;
   onSave: (settings: UserLlmSettings) => void;
   onSavePreferences: (preferences: UserPreferences) => void;
   onClose: () => void;
 }
 
 const sections: Array<{id: SettingsSection; label: string; icon: string}> = [
+  { id: "usage", label: "使用统计", icon: "chart" },
   { id: "model", label: "模型配置", icon: "✦" },
   { id: "appearance", label: "外观与窗口", icon: "◐" },
   { id: "behavior", label: "行为与提示", icon: "♡" },
@@ -32,14 +35,29 @@ function CopyIcon() {
   return <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="11" height="12" rx="2" /><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h2" /></svg>;
 }
 
+function SectionIcon({ icon }: { icon: string }) {
+  if (icon === "chart") {
+    return <svg className="settings-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V10M10 19V5M16 19v-7M22 19H2" /></svg>;
+  }
+  return <span>{icon}</span>;
+}
+
+function localDateKey(date: Date): string {
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
 export function PetSettingsModal({
   settings,
   preferences,
+  usageStats,
+  appVersion,
   onSave,
   onSavePreferences,
   onClose
 }: PetSettingsModalProps) {
-  const [activeSection, setActiveSection] = useState<SettingsSection>("model");
+  const [activeSection, setActiveSection] = useState<SettingsSection>("usage");
   const [draft, setDraft] = useState(settings);
   const [appearance, setAppearance] = useState(preferences.appearance);
   const [behavior, setBehavior] = useState(preferences.behavior);
@@ -159,6 +177,27 @@ export function PetSettingsModal({
   }
 
   function renderContent() {
+    if (activeSection === "usage") {
+      const stats = usageStats;
+      const duration = (seconds: number) => `${Math.floor(seconds / 3_600)}时${Math.floor((seconds % 3_600) / 60)}分`;
+      const maxTokens = Math.max(...(stats?.daily_tokens.map((item) => item.tokens) ?? [0]), 1);
+      const today = new Date();
+      const firstActivityDay = new Date(today);
+      firstActivityDay.setDate(today.getDate() - 181);
+      const monthLabels = Array.from({ length: 7 }, (_, index) => {
+        const month = new Date(firstActivityDay);
+        month.setMonth(firstActivityDay.getMonth() + index);
+        return `${month.getMonth() + 1}月`;
+      });
+      return <section className="settings-content usage-content">
+        <header className="settings-content-header"><div><p className="settings-eyebrow">YOUR ACTIVITY</p><h2>使用统计</h2><p>记录月薪喵陪伴你的每一天。</p></div></header>
+        <div className="usage-metrics">
+          <div><b>{stats?.total_tokens.toLocaleString() ?? "—"}</b><span>累计 Token</span></div><div><b>{stats?.peak_day_tokens.toLocaleString() ?? "—"}</b><span>单日峰值</span></div><div><b>{stats ? duration(stats.chat_duration_seconds) : "—"}</b><span>聊天时长</span></div><div><b>{stats?.current_streak_days ?? "—"} 天</b><span>当前连续</span></div><div><b>{stats?.longest_streak_days ?? "—"} 天</b><span>最长连续</span></div><div><b>{stats ? duration(stats.dance_duration_seconds) : "—"}</b><span>跳舞时间</span></div>
+        </div>
+        <h3 className="usage-title">Token 活动</h3><div className="usage-heatmap">{Array.from({ length: 182 }, (_, index) => { const day = new Date(firstActivityDay); day.setDate(firstActivityDay.getDate() + index); const key = localDateKey(day); const tokens = stats?.daily_tokens.find((item) => item.date === key)?.tokens ?? 0; const level = tokens ? Math.min(4, Math.ceil(tokens / maxTokens * 4)) : 0; return <span key={key} className={`usage-cell level-${level}`} data-tooltip={`${key}\n${tokens.toLocaleString()} Token`} />; })}</div><div className="usage-months">{monthLabels.map((label, index) => <span key={`${label}-${index}`}>{label}</span>)}</div>
+        {!stats && <p className="usage-empty">暂时无法连接后端，启动后端后会显示统计数据。</p>}
+      </section>;
+    }
     if (activeSection === "appearance") {
       return (
         <form className="settings-content" onSubmit={saveAppearance}>
@@ -211,7 +250,7 @@ export function PetSettingsModal({
       return (
         <section className="settings-about">
           <span className="settings-about-mark">ฅ</span><h2>月薪喵</h2><p>一个陪伴您工作的月薪喵 AI 桌宠。</p>
-          <dl><div><dt>版本</dt><dd>v0.2.0</dd></div><div><dt>开发者</dt><dd>sheyubai</dd></div><div><dt>开源协议</dt><dd>Apache-2.0</dd></div></dl>
+          <dl><div><dt>版本</dt><dd>{appVersion}</dd></div><div><dt>开发者</dt><dd>sheyubai</dd></div><div><dt>项目状态</dt><dd>持续开发中</dd></div></dl>
           <button className="settings-project-link" type="button" onClick={() => void window.petAPI.openProjectHomepage()}>查看项目主页 ↗</button>
         </section>
       );
@@ -293,7 +332,7 @@ export function PetSettingsModal({
       <section className="settings-modal" aria-label="月薪喵设置">
         <aside className="settings-sidebar">
           <div className="settings-brand">
-            <span>ฅ</span>
+            <span className="settings-cat-mark" aria-hidden="true">ฅ</span>
             <div>
               <strong>月薪喵</strong>
               <small>AI 桌宠</small>
@@ -307,14 +346,15 @@ export function PetSettingsModal({
                 className={activeSection === section.id ? "is-active" : ""}
                 onClick={() => setActiveSection(section.id)}
               >
-                <span>{section.icon}</span>{section.label}
+                <SectionIcon icon={section.icon} />{section.label}
               </button>
             ))}
           </nav>
-          <p className="settings-version">Salary Cat Desktop · v0.2.0</p>
+          <p className="settings-version">Salary Cat Desktop · {appVersion}</p>
         </aside>
         <main className="settings-main">
           <div className="settings-titlebar" aria-hidden="true" />
+          <button className="settings-minimize" type="button" onClick={() => void window.petAPI.minimizeCurrentWindow()} aria-label="最小化">−</button>
           <button className="settings-close" type="button" onClick={onClose} aria-label="关闭">×</button>
           {notice && (
             <div className={`settings-toast is-${notice.kind}`} role="status">

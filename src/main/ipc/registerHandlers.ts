@@ -261,4 +261,26 @@ export function registerIpcHandlers(): void {
     return `salary-cat://music/${musicId}`;
   });
 
+  ipcMain.handle(IPC_CHANNELS.getUsageStats, async () => {
+    const response = await net.fetch(`${apiBaseUrl}/api/v1/usage`);
+    if (!response.ok) {
+      throw new Error(errorDetail(await response.json().catch(() => null), response.status));
+    }
+    return response.json();
+  });
+
+  ipcMain.handle(
+    IPC_CHANNELS.recordUsageActivity,
+    async (_event, kind: "chat" | "dance", durationSeconds: number): Promise<void> => {
+      if (!(["chat", "dance"] as const).includes(kind) || !Number.isFinite(durationSeconds)) {
+        return;
+      }
+      await net.fetch(`${apiBaseUrl}/api/v1/usage/activity`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind, duration_seconds: Math.round(durationSeconds) })
+      });
+    }
+  );
+
 }

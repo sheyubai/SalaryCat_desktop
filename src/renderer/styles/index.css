@@ -476,8 +476,13 @@ button {
   border-radius: 11px;
   background: #e8795f;
   color: white;
-  font-size: 23px;
   place-items: center;
+}
+
+.settings-cat-mark {
+  color: #fff;
+  font-size: 23px;
+  line-height: 1;
 }
 
 .settings-brand strong,
@@ -513,14 +518,23 @@ button {
 }
 
 .settings-nav button:hover {
-  background: rgb(232 121 95 / 9%);
+  background: #fff0e5;
 }
 
 .settings-nav button.is-active {
-  background: #fff;
-  box-shadow: 0 2px 8px rgb(75 58 50 / 8%);
-  color: #c95f48;
+  background: #e8795f;
+  box-shadow: none;
+  color: #fff;
   font-weight: 600;
+}
+
+.settings-nav-icon {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-width: 1.8;
 }
 
 .settings-version {
@@ -545,6 +559,26 @@ button {
 .settings-content {
   max-width: 480px;
 }
+
+.usage-metrics {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  overflow: hidden;
+  border: 1px solid rgb(82 58 45 / 14%);
+  border-radius: 12px;
+}
+
+.usage-metrics div { min-height: 60px; padding: 9px 8px; border: 1px solid rgb(82 58 45 / 8%); }
+.usage-metrics b, .usage-metrics span { display: block; }
+.usage-metrics b { color: #705345; font-size: 13px; white-space: nowrap; }
+.usage-metrics span, .usage-empty { margin-top: 5px; color: #9b8174; font-size: 11px; }
+.usage-title { margin: 18px 0 10px; color: #705345; font-size: 13px; }
+.usage-heatmap { display: grid; grid-auto-flow: column; grid-template-columns: repeat(26, 15px); grid-template-rows: repeat(7, 15px); gap: 3px; }
+.usage-cell { position: relative; width: 15px; height: 15px; border-radius: 3px; background: #f3ece6; }
+.usage-cell:hover { outline: 1px solid #9b8174; z-index: 2; }
+.usage-cell:hover::after { position: absolute; z-index: 4; bottom: calc(100% + 7px); left: 50%; min-width: 104px; padding: 7px 9px; border-radius: 7px; background: #fff; box-shadow: 0 4px 14px rgb(75 58 50 / 18%); color: #705345; content: attr(data-tooltip); font-size: 11px; line-height: 1.55; text-align: center; white-space: pre-line; transform: translateX(-50%); }
+.usage-months { display: flex; justify-content: space-between; width: 465px; margin-top: 8px; color: #9b8174; font-size: 10px; }
+.usage-cell.level-1 { background: #f8c7b9; }.usage-cell.level-2 { background: #f3a18d; }.usage-cell.level-3 { background: #e8795f; }.usage-cell.level-4 { background: #bd4d39; }
 
 .settings-content-header {
   display: flex;
@@ -572,10 +606,10 @@ button {
   font-size: 13px;
 }
 
-.settings-close {
+.settings-close,
+.settings-minimize {
   position: absolute;
   top: 16px;
-  right: 18px;
   width: 28px;
   height: 28px;
   border: 0;
@@ -589,6 +623,19 @@ button {
 }
 
 .settings-close:hover {
+  background: #fff0e5;
+}
+
+.settings-close {
+  right: 18px;
+}
+
+.settings-minimize {
+  right: 52px;
+  font-size: 20px;
+}
+
+.settings-minimize:hover {
   background: #fff0e5;
 }
 

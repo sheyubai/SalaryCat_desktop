@@ -29,8 +29,12 @@ const petAPI: PetAPI = {
         ipcRenderer.send(IPC_CHANNELS.setWindowSize, size),
     openSettingsWindow: (): Promise<void> =>
         ipcRenderer.invoke(IPC_CHANNELS.openSettingsWindow),
+    toggleSettingsWindow: (): Promise<boolean> =>
+        ipcRenderer.invoke(IPC_CHANNELS.toggleSettingsWindow),
     closeSettingsWindow: (): Promise<void> =>
         ipcRenderer.invoke(IPC_CHANNELS.closeSettingsWindow),
+    minimizeCurrentWindow: (): Promise<void> =>
+        ipcRenderer.invoke(IPC_CHANNELS.minimizeCurrentWindow),
     openProjectHomepage: (): Promise<void> =>
         ipcRenderer.invoke(IPC_CHANNELS.openProjectHomepage),
     setMousePassthrough: (enabled: boolean): void =>
@@ -41,6 +45,10 @@ const petAPI: PetAPI = {
         ipcRenderer.invoke(IPC_CHANNELS.selectMusicFile),
     getMusicUrl: (path: string): Promise<string> =>
         ipcRenderer.invoke(IPC_CHANNELS.getMusicUrl, path),
+    getAppVersion: (): Promise<string> => ipcRenderer.invoke(IPC_CHANNELS.getAppVersion),
+    getUsageStats: () => ipcRenderer.invoke(IPC_CHANNELS.getUsageStats),
+    recordUsageActivity: (kind, durationSeconds) =>
+        ipcRenderer.invoke(IPC_CHANNELS.recordUsageActivity, kind, durationSeconds),
     sendChatMessage: (
         request: ChatRequest,
         onDelta?: (text: string) => void
