@@ -47,6 +47,7 @@ const petAPI: PetAPI = {
         ipcRenderer.invoke(IPC_CHANNELS.getMusicUrl, path),
     getAppVersion: (): Promise<string> => ipcRenderer.invoke(IPC_CHANNELS.getAppVersion),
     getUsageStats: () => ipcRenderer.invoke(IPC_CHANNELS.getUsageStats),
+    saveModelConfig: (settings) => ipcRenderer.invoke(IPC_CHANNELS.saveModelConfig, settings),
     recordUsageActivity: (kind, durationSeconds) =>
         ipcRenderer.invoke(IPC_CHANNELS.recordUsageActivity, kind, durationSeconds),
     sendChatMessage: (

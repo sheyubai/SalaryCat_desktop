@@ -97,6 +97,7 @@ export interface PetAPI {
   getMusicUrl(path: string): Promise<string>;
   getAppVersion(): Promise<string>;
   getUsageStats(): Promise<UsageStats>;
+  saveModelConfig(settings: UserLlmSettings): Promise<void>;
   recordUsageActivity(kind: "chat" | "dance", durationSeconds: number): Promise<void>;
   sendChatMessage(
     request: ChatRequest,
@@ -120,6 +121,7 @@ export const IPC_CHANNELS = {
   getMusicUrl: "music:get-url",
   getAppVersion: "app:version",
   getUsageStats: "usage:stats",
+  saveModelConfig: "model-config:save",
   recordUsageActivity: "usage:record-activity",
   sendChatMessage: "chat:send",
   chatDelta: "chat:delta"

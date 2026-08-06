@@ -24,7 +24,8 @@ export function SettingsPage() {
     window.petAPI.getAppVersion().then((version) => setAppVersion(`V${version}`)).catch(() => undefined);
   }, []);
 
-  function saveSettings(nextSettings: UserLlmSettings): void {
+  async function saveSettings(nextSettings: UserLlmSettings): Promise<void> {
+    await window.petAPI.saveModelConfig(nextSettings);
     setSettings(nextSettings);
     localStorage.setItem(llmSettingsStorageKey, JSON.stringify(nextSettings));
   }

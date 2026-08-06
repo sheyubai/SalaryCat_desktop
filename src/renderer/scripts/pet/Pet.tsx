@@ -11,7 +11,6 @@ import { PetSpeechBubble } from "../../components/pet/PetSpeechBubble";
 import { usePetBehavior } from "./usePetBehavior";
 import { usePetStore } from "./petStore";
 import {
-  loadLlmSettings,
   loadPreferences,
   preferencesChannelName
 } from "./userPreferences";
@@ -211,13 +210,9 @@ export function Pet({ manifest }: PetProps) {
     setState("thinking", "让本喵想想哦...");
     try {
       let streamedAnswer = "";
-      const settings = loadLlmSettings();
       const response = await window.petAPI.sendChatMessage({
         message: input,
-        conversationId: conversationId.current,
-        apiKey: settings.apiKey || undefined,
-        baseUrl: settings.baseUrl || undefined,
-        model: settings.model || undefined
+        conversationId: conversationId.current
       }, (text) => {
         streamedAnswer += text;
         setState("happy", streamedAnswer);

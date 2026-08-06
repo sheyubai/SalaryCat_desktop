@@ -16,6 +16,7 @@ import { resourcesDirectory } from "../paths";
 
 const apiBaseUrl = (process.env.SALARY_CAT_API_URL ?? "http://127.0.0.1:8000")
   .replace(/\/$/, "");
+const clientToken = process.env.SALARY_CAT_CLIENT_TOKEN?.trim();
 const supportedAudioExtensions = new Set([".mp3", ".wav", ".ogg", ".m4a", ".flac"]);
 const registeredMusicFiles = new Map<string, string>();
 
@@ -39,6 +40,13 @@ function errorDetail(body: unknown, status: number): string {
   return `后端请求失败（HTTP ${status}）。`;
 }
 
+function backendHeaders(json = false): Record<string, string> {
+  const headers: Record<string, string> = {};
+  if (json) headers["Content-Type"] = "application/json";
+  if (clientToken) headers["X-Client-Token"] = clientToken;
+  return headers;
+}
+
 function validateCharacterId(characterId: string): void {
   if (!/^[a-z0-9-]+$/i.test(characterId)) {
     throw new Error("Invalid character id.");
@@ -50,6 +58,18 @@ export function getRegisteredMusicFile(id: string): string | undefined {
 }
 
 export function registerIpcHandlers(): void {
+  ipcMain.handle(
+    IPC_CHANNELS.saveModelConfig,
+    async (_event, settings: { apiKey: string; baseUrl: string; model: string }): Promise<void> => {
+      const response = await net.fetch(`${apiBaseUrl}/api/v1/model-config`, {
+        method: "PUT",
+        headers: backendHeaders(true),
+        body: JSON.stringify({ api_key: settings.apiKey, base_url: settings.baseUrl, model: settings.model })
+      });
+      if (!response.ok) throw new Error(errorDetail(await response.json().catch(() => null), response.status));
+    }
+  );
+
   ipcMain.handle(
     IPC_CHANNELS.sendChatMessage,
     async (
@@ -66,7 +86,7 @@ export function registerIpcHandlers(): void {
       try {
         response = await net.fetch(`${apiBaseUrl}/api/v1/chat/stream`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: backendHeaders(true),
           body: JSON.stringify({
             message,
             conversation_id: request.conversationId,
@@ -262,7 +282,7 @@ export function registerIpcHandlers(): void {
   });
 
   ipcMain.handle(IPC_CHANNELS.getUsageStats, async () => {
-    const response = await net.fetch(`${apiBaseUrl}/api/v1/usage`);
+    const response = await net.fetch(`${apiBaseUrl}/api/v1/usage`, { headers: backendHeaders() });
     if (!response.ok) {
       throw new Error(errorDetail(await response.json().catch(() => null), response.status));
     }
@@ -277,7 +297,7 @@ export function registerIpcHandlers(): void {
       }
       await net.fetch(`${apiBaseUrl}/api/v1/usage/activity`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: backendHeaders(true),
         body: JSON.stringify({ kind, duration_seconds: Math.round(durationSeconds) })
       });
     }
