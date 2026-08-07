@@ -1,6 +1,6 @@
 # Salary Cat Desktop
 
-一只可爱的桌面月薪猫，基于 Electron、React 和 TypeScript。它常驻系统托盘，可以拖动、播放角色音乐，并通过独立的 FastAPI 后端与 OpenAI-compatible 模型对话。
+一只可爱的桌面月薪猫，基于 Electron、React 和 TypeScript。它常驻系统托盘，可以拖动、播放角色音乐，并通过独立的 Java/Spring Boot 后端与 OpenAI-compatible 模型对话。
 
 ## 截图
 
@@ -37,14 +37,14 @@ electron.vite.config.ts
 package.json
 ```
 
-后端是同级目录中的独立项目：`E:\Project\SalaryCat_backend`，不属于本仓库的 `src/`。
+后端是同级目录中的独立项目：`E:\Project\SalaryCat_server`，不属于本仓库的 `src/`。原 Python 后端 `E:\Project\SalaryCat_backend` 仍可作为回退服务。
 
 ## 环境要求
 
 - Windows
 - Node.js 20 或更高版本
 - npm
-- 已启动的 Salary Cat FastAPI 后端
+- 已启动的 Salary Cat Java 后端（`E:\Project\SalaryCat_server`）
 - 后端可访问 MySQL 和已配置的 LLM 服务
 
 ## 开发启动
@@ -52,14 +52,14 @@ package.json
 先启动后端（另开一个 PowerShell）：
 
 ```powershell
-cd E:\Project\SalaryCat_backend
-.\.venv\Scripts\python -m uvicorn app.main:app --reload
+cd E:\Project\SalaryCat_server
+mvn spring-boot:run -pl salary-cat-web -am
 ```
 
 确认后端可以访问：
 
 - http://127.0.0.1:8000/api/v1/health/live
-- http://127.0.0.1:8000/docs
+- http://127.0.0.1:8000/api/v1/health/ready
 
 再启动桌面端：
 
@@ -73,6 +73,8 @@ npm run dev
 
 ```powershell
 $env:SALARY_CAT_API_URL = "http://127.0.0.1:9000"
+# 如果后端开启了客户端令牌校验：
+$env:SALARY_CAT_CLIENT_TOKEN = "替换为后端 SALARY_CAT_CLIENT_TOKEN"
 npm run dev
 ```
 
@@ -86,16 +88,23 @@ npm run pack       # 构建并生成未安装目录
 npm run dist       # 构建 Windows 安装包
 ```
 
-## 后端接口
+## 登录与后端接口
 
 桌面端通过 Electron 主进程调用：
 
 ```text
-POST /api/v1/chat/stream  # NDJSON 流式聊天
-POST /api/v1/chat         # 普通一次性聊天
+POST /api/v1/auth/register      # 注册并登录
+POST /api/v1/auth/login         # 登录并返回 access_token/refresh_token
+POST /api/v1/auth/refresh       # 自动刷新短期 access token
+POST /api/v1/auth/logout        # 撤销当前会话
+POST /api/v1/chat/stream        # NDJSON 流式聊天
+POST /api/v1/chat               # 普通一次性聊天
+GET  /api/v1/usage              # 当前登录用户的 Token 使用统计
 ```
 
-模型密钥只配置在后端 `.env`，不要写入桌面端代码或安装包。桌面端只保存当前运行期间的 `conversation_id`，完整对话由后端写入 MySQL。
+打开设置页的“账号登录”即可注册或登录。桌面端启动后会自动恢复本机保存的登录凭证；access token 过期时由主进程使用 refresh token 自动换新，刷新失败才要求重新登录。登录凭证由 Electron 主进程使用系统加密存储，完整对话和 Token 使用统计由后端按登录用户写入、查询 MySQL。
+
+模型配置只保存在当前电脑，聊天时按需发送到已登录的后端；服务端默认模型仍应配置在后端 `.env`。桌面端只保存表单草稿和当前运行期间的 `conversation_id`。
 
 ## 角色资源
 
@@ -125,7 +134,7 @@ npm run dev
 
 ### `Connection error`
 
-检查后端是否运行、`SALARY_CAT_API_URL` 是否正确，并确认后端 `.env` 中的 `LLM_API_KEY`、`LLM_BASE_URL` 和 `LLM_MODEL` 已配置。模型服务还必须支持 OpenAI-compatible Chat Completions 接口及流式响应。
+检查后端是否运行、`SALARY_CAT_API_URL` 是否正确，并确认后端数据库、Flyway 迁移和账号令牌配置正常。用户在设置页保存的模型服务必须支持 OpenAI-compatible Chat Completions 接口及流式响应。
 
 ### 回复框太大或被裁剪
 

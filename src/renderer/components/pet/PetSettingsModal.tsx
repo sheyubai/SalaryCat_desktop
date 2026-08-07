@@ -1,20 +1,25 @@
 import { useEffect, useState, type FormEvent } from "react";
 
-import type { UsageStats, UserLlmSettings, UserMusicSettings, UserPreferences } from "../../../shared/contracts";
+import type { AuthSession, UsageStats, UserLlmSettings, UserMusicSettings, UserPreferences } from "../../../shared/contracts";
+import { LoginPage } from "../../pages/auth/LoginPage";
 
-type SettingsSection = "usage" | "model" | "appearance" | "behavior" | "music" | "about";
+type SettingsSection = "account" | "usage" | "model" | "appearance" | "behavior" | "music" | "about";
 
 interface PetSettingsModalProps {
   settings: UserLlmSettings;
   preferences: UserPreferences;
   usageStats: UsageStats | null;
+  authSession: AuthSession | null | undefined;
   appVersion: string;
-  onSave: (settings: UserLlmSettings) => void;
+  onSave: (settings: UserLlmSettings) => Promise<void>;
+  onLoggedIn: (session: AuthSession) => void;
+  onLogout: () => void;
   onSavePreferences: (preferences: UserPreferences) => void;
   onClose: () => void;
 }
 
 const sections: Array<{id: SettingsSection; label: string; icon: string}> = [
+  { id: "account", label: "账号登录", icon: "●" },
   { id: "usage", label: "使用统计", icon: "chart" },
   { id: "model", label: "模型配置", icon: "✦" },
   { id: "appearance", label: "外观与窗口", icon: "◐" },
@@ -52,12 +57,15 @@ export function PetSettingsModal({
   settings,
   preferences,
   usageStats,
+  authSession,
   appVersion,
   onSave,
+  onLoggedIn,
+  onLogout,
   onSavePreferences,
   onClose
 }: PetSettingsModalProps) {
-  const [activeSection, setActiveSection] = useState<SettingsSection>("usage");
+  const [activeSection, setActiveSection] = useState<SettingsSection>(authSession ? "usage" : "account");
   const [draft, setDraft] = useState(settings);
   const [appearance, setAppearance] = useState(preferences.appearance);
   const [behavior, setBehavior] = useState(preferences.behavior);
@@ -66,6 +74,7 @@ export function PetSettingsModal({
     preferences.behavior.sleepMessages.join("\n")
   );
   const [showApiKey, setShowApiKey] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<{
     kind: "success" | "error";
     message: string;
@@ -82,8 +91,10 @@ export function PetSettingsModal({
     return () => window.clearTimeout(timer);
   }, [notice]);
 
-  function submit(event: FormEvent<HTMLFormElement>): void {
+  async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
+    if (saving) return;
+    setSaving(true);
     try {
       const nextSettings = {
         apiKey: draft.apiKey.trim(),
@@ -100,13 +111,15 @@ export function PetSettingsModal({
           throw new Error("接口地址必须以 http:// 或 https:// 开头。");
         }
       }
-      onSave(nextSettings);
+      await onSave(nextSettings);
       setNotice({ kind: "success", message: "设置已保存" });
     } catch (error) {
       setNotice({
         kind: "error",
         message: error instanceof Error ? error.message : "保存设置失败，请重试。"
       });
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -177,6 +190,21 @@ export function PetSettingsModal({
   }
 
   function renderContent() {
+    if (activeSection === "account") {
+      if (authSession === undefined) {
+        return <section className="settings-content settings-account"><p className="settings-eyebrow">ACCOUNT</p><h2>账号登录</h2><p>正在检查登录状态…</p></section>;
+      }
+      if (!authSession) {
+        return <LoginPage embedded onLoggedIn={onLoggedIn} />;
+      }
+      return (
+        <section className="settings-content settings-account">
+          <header className="settings-content-header"><div><p className="settings-eyebrow">ACCOUNT</p><h2>账号登录</h2><p>当前已连接到月薪喵后端。</p></div></header>
+          <div className="account-status"><span>●</span><div><b>{authSession.displayName || authSession.username || "已登录用户"}</b><small>{authSession.username ? `账号：${authSession.username} · 登录凭证已安全保存在本机` : "登录凭证已安全保存在本机"}</small></div></div>
+          <button type="button" className="settings-save account-logout" onClick={onLogout}>退出登录</button>
+        </section>
+      );
+    }
     if (activeSection === "usage") {
       const stats = usageStats;
       const duration = (seconds: number) => `${Math.floor(seconds / 3_600)}时${Math.floor((seconds % 3_600) / 60)}分`;
@@ -190,7 +218,7 @@ export function PetSettingsModal({
         return `${month.getMonth() + 1}月`;
       });
       return <section className="settings-content usage-content">
-        <header className="settings-content-header"><div><p className="settings-eyebrow">YOUR ACTIVITY</p><h2>使用统计</h2><p>记录月薪喵陪伴你的每一天。</p></div></header>
+        <header className="settings-content-header"><div><p className="settings-eyebrow">YOUR ACTIVITY</p><h2>使用统计</h2><p>Token 使用情况和活动数据由后端统计返回。</p></div></header>
         <div className="usage-metrics">
           <div><b>{stats?.total_tokens.toLocaleString() ?? "—"}</b><span>累计 Token</span></div><div><b>{stats?.peak_day_tokens.toLocaleString() ?? "—"}</b><span>单日峰值</span></div><div><b>{stats ? duration(stats.chat_duration_seconds) : "—"}</b><span>聊天时长</span></div><div><b>{stats?.current_streak_days ?? "—"} 天</b><span>当前连续</span></div><div><b>{stats?.longest_streak_days ?? "—"} 天</b><span>最长连续</span></div><div><b>{stats ? duration(stats.dance_duration_seconds) : "—"}</b><span>跳舞时间</span></div>
         </div>
@@ -318,10 +346,10 @@ export function PetSettingsModal({
 
         <div className="settings-security-note">
           <span>⚠</span>
-          <p>Key 会保存在当前电脑，并在每次对话时发送到你的后端。请不要在共享设备上保存私人 Key。</p>
+          <p>Key 会按当前账号保存到后端并加密存储，聊天时由后端调用模型。请不要在共享设备上保存私人 Key。</p>
         </div>
         <footer className="settings-actions">
-          <button type="submit" className="settings-save">保存设置</button>
+          <button type="submit" className="settings-save" disabled={saving}>{saving ? "保存中…" : "保存设置"}</button>
         </footer>
       </form>
     );

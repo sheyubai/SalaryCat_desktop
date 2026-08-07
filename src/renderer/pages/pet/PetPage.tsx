@@ -6,9 +6,6 @@ import { Pet } from "../../scripts/pet/Pet";
 import { SettingsPage } from "./SettingsPage";
 
 export function PetPage() {
-  if (window.location.hash === "#settings") {
-    return <SettingsPage />;
-  }
   const [manifest, setManifest] = useState<CharacterManifest | null>(null);
   const [error, setError] = useState("");
 
@@ -37,6 +34,8 @@ export function PetPage() {
       active = false;
     };
   }, []);
+
+  if (window.location.hash === "#settings") return <SettingsPage />;
 
   if (error) {
     return <div className="error-bubble">角色加载失败：{error}</div>;

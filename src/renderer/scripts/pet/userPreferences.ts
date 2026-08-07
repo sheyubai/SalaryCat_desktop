@@ -5,6 +5,10 @@ export const preferencesStorageKey = "salary-cat-preferences";
 export const preferencesChannelName = "salary-cat-preferences";
 export const llmSettingsStorageKey = "salary-cat-llm-settings";
 
+export function llmSettingsKeyFor(owner?: string): string {
+  return owner ? `${llmSettingsStorageKey}:${encodeURIComponent(owner)}` : llmSettingsStorageKey;
+}
+
 function numberInRange(value: unknown, fallback: number, min: number, max: number): number {
   return typeof value === "number" && Number.isFinite(value) && value >= min && value <= max
     ? value
@@ -81,9 +85,9 @@ export function loadPreferences(): UserPreferences {
   }
 }
 
-export function loadLlmSettings(): UserLlmSettings {
+export function loadLlmSettings(storageKey = llmSettingsStorageKey): UserLlmSettings {
   try {
-    const stored = JSON.parse(localStorage.getItem(llmSettingsStorageKey) ?? "{}") as Partial<UserLlmSettings>;
+    const stored = JSON.parse(localStorage.getItem(storageKey) ?? "{}") as Partial<UserLlmSettings>;
     return {
       apiKey: typeof stored.apiKey === "string" ? stored.apiKey.trim() : "",
       baseUrl: typeof stored.baseUrl === "string" ? stored.baseUrl.trim() : "",

@@ -27,6 +27,54 @@ button {
   font: inherit;
 }
 
+.login-page {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  padding: 18px;
+  place-items: center;
+  background: #f7f1eb;
+}
+
+.login-page-embedded {
+  min-height: 420px;
+  padding: 0;
+  background: transparent;
+}
+
+.login-card {
+  width: min(300px, 100%);
+  padding: 22px 24px 18px;
+  border: 1px solid rgb(82 58 45 / 16%);
+  border-radius: 22px;
+  background: #fffdf9;
+  box-shadow: 0 10px 28px rgb(75 58 50 / 12%);
+  text-align: center;
+}
+
+.login-mark { display: grid; width: 48px; height: 48px; margin: 0 auto 9px; border-radius: 16px; background: #e8795f; font-size: 28px; place-items: center; }
+.login-eyebrow { margin: 0; color: #e8795f; font-size: 10px; font-weight: 700; letter-spacing: .14em; }
+.login-card h1 { margin: 6px 0 3px; font-size: 23px; }
+.login-subtitle { margin: 0 0 17px; color: #9b8174; font-size: 12px; }
+.login-field { display: block; margin-top: 11px; text-align: left; }
+.login-field span { display: block; margin: 0 0 5px; color: #705345; font-size: 12px; font-weight: 600; }
+.login-field input { width: 100%; height: 38px; padding: 0 10px; border: 1px solid rgb(82 58 45 / 24%); border-radius: 9px; outline: 0; background: #fff; color: #31251f; font: inherit; font-size: 13px; }
+.login-field input:focus { border-color: #e8795f; box-shadow: 0 0 0 3px rgb(232 121 95 / 16%); }
+.login-error { margin: 10px 0 0; color: #b73f2d; font-size: 12px; line-height: 1.4; text-align: left; }
+.login-submit { width: 100%; height: 38px; margin-top: 17px; border: 0; border-radius: 9px; background: #e8795f; color: #fff; cursor: pointer; font-size: 13px; font-weight: 600; }
+.login-submit:hover { background: #d96850; }
+.login-submit:disabled { cursor: default; opacity: .55; }
+.login-switch { display: block; margin: 11px auto 0; border: 0; background: transparent; color: #d96850; cursor: pointer; font-size: 12px; }
+.login-switch:hover { color: #b73f2d; text-decoration: underline; }
+.login-note { margin: 14px 0 0; color: #b09b90; font-size: 10px; }
+.settings-account { max-width: 420px; }
+.account-status { display: flex; align-items: center; gap: 11px; margin-top: 28px; padding: 14px; border: 1px solid rgb(82 58 45 / 14%); border-radius: 12px; background: #fffaf6; }
+.account-status > span { color: #5eae45; font-size: 21px; }
+.account-status b, .account-status small { display: block; }
+.account-status b { color: #705345; font-size: 13px; }
+.account-status small { margin-top: 4px; color: #9b8174; font-size: 11px; }
+.account-logout { margin-top: 20px; }
+
 .pet-stage {
   /* 猫、按钮、输入框仍固定在底部 240×240 区域。 */
   /* 上方预留 80px 给回答框，下方预留 24px 给组件阴影。 */

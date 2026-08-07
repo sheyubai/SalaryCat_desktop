@@ -68,6 +68,21 @@ export interface ChatResponse {
   answer: string;
 }
 
+export interface AuthCredentials {
+  username: string;
+  password: string;
+}
+
+export interface RegisterCredentials extends AuthCredentials {
+  displayName?: string;
+}
+
+export interface AuthSession {
+  username?: string;
+  displayName?: string;
+  userId?: string;
+}
+
 export interface DailyTokenUsage { date: string; tokens: number; }
 export interface UsageStats {
   total_tokens: number;
@@ -81,6 +96,10 @@ export interface UsageStats {
 }
 
 export interface PetAPI {
+  getAuthSession(): Promise<AuthSession | null>;
+  login(credentials: AuthCredentials): Promise<AuthSession>;
+  register(credentials: RegisterCredentials): Promise<AuthSession>;
+  logout(): Promise<void>;
   getCharacterManifest(characterId: string): Promise<CharacterManifest>;
   assetUrl(relativePath: string): string;
   getWindowPosition(): Promise<WindowPosition>;
@@ -97,7 +116,6 @@ export interface PetAPI {
   getMusicUrl(path: string): Promise<string>;
   getAppVersion(): Promise<string>;
   getUsageStats(): Promise<UsageStats>;
-  saveModelConfig(settings: UserLlmSettings): Promise<void>;
   recordUsageActivity(kind: "chat" | "dance", durationSeconds: number): Promise<void>;
   sendChatMessage(
     request: ChatRequest,
@@ -106,6 +124,10 @@ export interface PetAPI {
 }
 
 export const IPC_CHANNELS = {
+  authSession: "auth:session",
+  authLogin: "auth:login",
+  authRegister: "auth:register",
+  authLogout: "auth:logout",
   characterManifest: "character:manifest",
   windowPosition: "window:position",
   moveWindow: "window:move",
@@ -121,7 +143,6 @@ export const IPC_CHANNELS = {
   getMusicUrl: "music:get-url",
   getAppVersion: "app:version",
   getUsageStats: "usage:stats",
-  saveModelConfig: "model-config:save",
   recordUsageActivity: "usage:record-activity",
   sendChatMessage: "chat:send",
   chatDelta: "chat:delta"

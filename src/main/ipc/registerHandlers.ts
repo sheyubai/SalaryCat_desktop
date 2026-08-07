@@ -1,7 +1,7 @@
-import { BrowserWindow, dialog, ipcMain, net, screen, type OpenDialogOptions } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, net, safeStorage, screen, type OpenDialogOptions } from "electron";
 import { randomUUID } from "node:crypto";
 import { constants } from "node:fs";
-import { access, readFile } from "node:fs/promises";
+import { access, readFile, unlink, writeFile } from "node:fs/promises";
 import { extname, join } from "node:path";
 
 import {
@@ -9,6 +9,7 @@ import {
   type ChatRequest,
   type ChatResponse,
   type CharacterManifest,
+  type AuthSession,
   type WindowPosition,
   type WindowSize
 } from "../../shared/contracts";
@@ -17,8 +18,64 @@ import { resourcesDirectory } from "../paths";
 const apiBaseUrl = (process.env.SALARY_CAT_API_URL ?? "http://127.0.0.1:8000")
   .replace(/\/$/, "");
 const clientToken = process.env.SALARY_CAT_CLIENT_TOKEN?.trim();
+interface BackendAuthSession {
+  accessToken: string;
+  refreshToken: string;
+  tokenType: string;
+  username?: string;
+  displayName?: string;
+  userId?: string;
+}
+
+let authSession: BackendAuthSession | null = null;
+let authSessionLoaded = false;
+let refreshPromise: Promise<boolean> | null = null;
 const supportedAudioExtensions = new Set([".mp3", ".wav", ".ogg", ".m4a", ".flac"]);
 const registeredMusicFiles = new Map<string, string>();
+
+function authSessionPath(): string {
+  return join(app.getPath("userData"), "auth-session.dat");
+}
+
+async function loadAuthSession(): Promise<void> {
+  if (authSessionLoaded) {
+    return;
+  }
+  authSessionLoaded = true;
+  if (!safeStorage.isEncryptionAvailable()) {
+    return;
+  }
+  try {
+    const encrypted = await readFile(authSessionPath(), "utf8");
+    const value = JSON.parse(safeStorage.decryptString(Buffer.from(encrypted, "base64"))) as Partial<BackendAuthSession>;
+    if (typeof value.accessToken === "string" && value.accessToken) {
+      authSession = {
+        accessToken: value.accessToken,
+        refreshToken: typeof value.refreshToken === "string" ? value.refreshToken : "",
+        tokenType: typeof value.tokenType === "string" && value.tokenType ? value.tokenType : "Bearer",
+        username: typeof value.username === "string" ? value.username : undefined,
+        displayName: typeof value.displayName === "string" ? value.displayName : undefined,
+        userId: typeof value.userId === "string" ? value.userId : undefined
+      };
+    }
+  } catch {
+    authSession = null;
+  }
+}
+
+async function persistAuthSession(): Promise<void> {
+  if (!authSession || !safeStorage.isEncryptionAvailable()) {
+    return;
+  }
+  const encrypted = safeStorage.encryptString(JSON.stringify(authSession)).toString("base64");
+  await writeFile(authSessionPath(), encrypted, "utf8");
+}
+
+async function clearAuthSession(): Promise<void> {
+  authSession = null;
+  authSessionLoaded = true;
+  await unlink(authSessionPath()).catch(() => undefined);
+}
 
 interface BackendStreamEvent {
   type: "start" | "delta" | "done" | "error";
@@ -26,25 +83,115 @@ interface BackendStreamEvent {
   message_id?: string;
   text?: string;
   detail?: string;
+  message?: string;
 }
 
 function errorDetail(body: unknown, status: number): string {
-  if (
-    typeof body === "object" &&
-    body !== null &&
-    "detail" in body &&
-    typeof body.detail === "string"
-  ) {
-    return body.detail;
+  if (typeof body === "object" && body !== null) {
+    const value = body as Record<string, unknown>;
+    for (const candidate of [value.message, value.detail]) {
+      if (typeof candidate === "string" && candidate.trim()) return candidate;
+    }
+    if (typeof value.data === "object" && value.data !== null) {
+      const data = value.data as Record<string, unknown>;
+      for (const candidate of [data.message, data.detail]) {
+        if (typeof candidate === "string" && candidate.trim()) return candidate;
+      }
+    }
   }
   return `后端请求失败（HTTP ${status}）。`;
+}
+
+function unwrapBackendBody(body: unknown): unknown {
+  if (typeof body === "object" && body !== null && "data" in body) {
+    const value = body as Record<string, unknown>;
+    if ("success" in value || "code" in value || "trace_id" in value) {
+      return value.data;
+    }
+  }
+  return body;
 }
 
 function backendHeaders(json = false): Record<string, string> {
   const headers: Record<string, string> = {};
   if (json) headers["Content-Type"] = "application/json";
   if (clientToken) headers["X-Client-Token"] = clientToken;
+  if (authSession) {
+    headers.Authorization = `${authSession.tokenType || "Bearer"} ${authSession.accessToken}`;
+  }
   return headers;
+}
+
+function authSessionFromResponse(data: unknown, fallbackUsername?: string): BackendAuthSession {
+  if (typeof data !== "object" || data === null) {
+    throw new Error("登录响应格式无效。");
+  }
+  const value = data as Record<string, unknown>;
+  const accessToken = typeof value.access_token === "string" ? value.access_token : "";
+  const refreshToken = typeof value.refresh_token === "string" ? value.refresh_token : "";
+  if (!accessToken || !refreshToken) {
+    throw new Error("登录响应缺少有效的访问令牌。");
+  }
+  const profile = typeof value.user === "object" && value.user !== null
+    ? value.user as Record<string, unknown>
+    : undefined;
+  return {
+    accessToken,
+    refreshToken,
+    tokenType: typeof value.token_type === "string" && value.token_type ? value.token_type : "Bearer",
+    userId: typeof profile?.id === "string" ? profile.id : undefined,
+    username: typeof profile?.username === "string" ? profile.username : fallbackUsername,
+    displayName: typeof profile?.display_name === "string" ? profile.display_name : undefined
+  };
+}
+
+async function refreshAuthSession(): Promise<boolean> {
+  if (!authSession?.refreshToken) return false;
+  if (refreshPromise) return refreshPromise;
+  refreshPromise = (async () => {
+    try {
+      const response = await net.fetch(`${apiBaseUrl}/api/v1/auth/refresh`, {
+        method: "POST",
+        headers: {
+          ...(clientToken ? { "X-Client-Token": clientToken } : {}),
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ refresh_token: authSession?.refreshToken })
+      });
+      const body = await response.json().catch(() => null);
+      if (!response.ok) return false;
+      const next = authSessionFromResponse(unwrapBackendBody(body), authSession?.username);
+      authSession = next;
+      await persistAuthSession();
+      return true;
+    } catch {
+      return false;
+    } finally {
+      refreshPromise = null;
+    }
+  })();
+  return refreshPromise;
+}
+
+async function backendFetch(path: string, options: RequestInit = {}, retry = true): Promise<Response> {
+  await loadAuthSession();
+  const request = () => net.fetch(`${apiBaseUrl}${path}`, {
+    ...options,
+    headers: {
+      ...(options.headers as Record<string, string> | undefined),
+      ...backendHeaders(typeof options.body === "string")
+    }
+  });
+  let response = await request();
+  if (response.status === 401 && retry && !path.startsWith("/api/v1/auth/")) {
+    if (await refreshAuthSession()) {
+      response = await request();
+      if (response.status === 401) await clearAuthSession();
+    } else {
+      await clearAuthSession();
+    }
+  }
+  return response;
 }
 
 function validateCharacterId(characterId: string): void {
@@ -57,18 +204,98 @@ export function getRegisteredMusicFile(id: string): string | undefined {
   return registeredMusicFiles.get(id);
 }
 
-export function registerIpcHandlers(): void {
+export async function registerIpcHandlers(): Promise<void> {
+  await loadAuthSession();
+
   ipcMain.handle(
-    IPC_CHANNELS.saveModelConfig,
-    async (_event, settings: { apiKey: string; baseUrl: string; model: string }): Promise<void> => {
-      const response = await net.fetch(`${apiBaseUrl}/api/v1/model-config`, {
-        method: "PUT",
-        headers: backendHeaders(true),
-        body: JSON.stringify({ api_key: settings.apiKey, base_url: settings.baseUrl, model: settings.model })
-      });
-      if (!response.ok) throw new Error(errorDetail(await response.json().catch(() => null), response.status));
+    IPC_CHANNELS.authSession,
+    async (): Promise<AuthSession | null> => {
+      await loadAuthSession();
+      return authSession ? {
+        username: authSession.username,
+        displayName: authSession.displayName,
+        userId: authSession.userId
+      } : null;
     }
   );
+
+  ipcMain.handle(
+    IPC_CHANNELS.authLogin,
+    async (_event, credentials: { username: string; password: string }): Promise<AuthSession> => {
+      const username = credentials.username.trim();
+      if (!username || !credentials.password) {
+        throw new Error("请输入账号和密码。");
+      }
+
+      let response: Response;
+      try {
+        response = await net.fetch(`${apiBaseUrl}/api/v1/auth/login`, {
+          method: "POST",
+          headers: {
+            ...(clientToken ? { "X-Client-Token": clientToken } : {}),
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ username, password: credentials.password })
+        });
+      } catch {
+        throw new Error("无法连接月薪喵后端，请确认后端已启动。");
+      }
+
+      const body = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(errorDetail(body, response.status));
+      }
+      authSession = authSessionFromResponse(unwrapBackendBody(body), username);
+      await persistAuthSession();
+      return { username: authSession.username, displayName: authSession.displayName, userId: authSession.userId };
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.authRegister,
+    async (_event, credentials: { username: string; password: string; displayName?: string }): Promise<AuthSession> => {
+      const username = credentials.username.trim();
+      if (!/^[A-Za-z0-9_]{3,32}$/.test(username)) {
+        throw new Error("账号需为 3-32 位字母、数字或下划线。");
+      }
+      if (credentials.password.length < 8) {
+        throw new Error("密码至少需要 8 位。");
+      }
+      let response: Response;
+      try {
+        response = await net.fetch(`${apiBaseUrl}/api/v1/auth/register`, {
+          method: "POST",
+          headers: {
+            ...(clientToken ? { "X-Client-Token": clientToken } : {}),
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            username,
+            password: credentials.password,
+            display_name: credentials.displayName?.trim() || undefined
+          })
+        });
+      } catch {
+        throw new Error("无法连接月薪喵后端，请确认后端已启动。");
+      }
+      const body = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(errorDetail(body, response.status));
+      }
+      authSession = authSessionFromResponse(unwrapBackendBody(body), username);
+      await persistAuthSession();
+      return { username: authSession.username, displayName: authSession.displayName, userId: authSession.userId };
+    }
+  );
+
+  ipcMain.handle(IPC_CHANNELS.authLogout, async (): Promise<void> => {
+    if (authSession?.accessToken) {
+      await backendFetch(`/api/v1/auth/logout`, {
+        method: "POST",
+      }).catch(() => undefined);
+    }
+    await clearAuthSession();
+  });
 
   ipcMain.handle(
     IPC_CHANNELS.sendChatMessage,
@@ -84,9 +311,8 @@ export function registerIpcHandlers(): void {
 
       let response: Response;
       try {
-        response = await net.fetch(`${apiBaseUrl}/api/v1/chat/stream`, {
+        response = await backendFetch(`/api/v1/chat/stream`, {
           method: "POST",
-          headers: backendHeaders(true),
           body: JSON.stringify({
             message,
             conversation_id: request.conversationId,
@@ -131,7 +357,7 @@ export function registerIpcHandlers(): void {
             });
           }
         } else if (streamEvent.type === "error") {
-          throw new Error(streamEvent.detail || "模型生成回复失败。");
+          throw new Error(streamEvent.detail || streamEvent.message || "模型生成回复失败。");
         }
       };
 
@@ -282,7 +508,7 @@ export function registerIpcHandlers(): void {
   });
 
   ipcMain.handle(IPC_CHANNELS.getUsageStats, async () => {
-    const response = await net.fetch(`${apiBaseUrl}/api/v1/usage`, { headers: backendHeaders() });
+    const response = await backendFetch(`/api/v1/usage`);
     if (!response.ok) {
       throw new Error(errorDetail(await response.json().catch(() => null), response.status));
     }
@@ -295,11 +521,13 @@ export function registerIpcHandlers(): void {
       if (!(["chat", "dance"] as const).includes(kind) || !Number.isFinite(durationSeconds)) {
         return;
       }
-      await net.fetch(`${apiBaseUrl}/api/v1/usage/activity`, {
+      const response = await backendFetch(`/api/v1/usage/activity`, {
         method: "POST",
-        headers: backendHeaders(true),
         body: JSON.stringify({ kind, duration_seconds: Math.round(durationSeconds) })
       });
+      if (!response.ok && response.status !== 401) {
+        throw new Error(errorDetail(await response.json().catch(() => null), response.status));
+      }
     }
   );
 

@@ -2,6 +2,9 @@ import {contextBridge, ipcRenderer} from "electron";
 
 import {
     IPC_CHANNELS,
+    type AuthCredentials,
+    type RegisterCredentials,
+  type AuthSession,
     type ChatRequest,
     type ChatResponse,
     type CharacterManifest,
@@ -11,6 +14,13 @@ import {
 } from "../shared/contracts";
 
 const petAPI: PetAPI = {
+    getAuthSession: (): Promise<AuthSession | null> =>
+        ipcRenderer.invoke(IPC_CHANNELS.authSession),
+    login: (credentials: AuthCredentials): Promise<AuthSession> =>
+        ipcRenderer.invoke(IPC_CHANNELS.authLogin, credentials),
+    register: (credentials: RegisterCredentials): Promise<AuthSession> =>
+        ipcRenderer.invoke(IPC_CHANNELS.authRegister, credentials),
+    logout: (): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.authLogout),
     getCharacterManifest: (characterId: string): Promise<CharacterManifest> =>
         ipcRenderer.invoke(IPC_CHANNELS.characterManifest, characterId),
     assetUrl: (relativePath: string): string => {
@@ -47,7 +57,6 @@ const petAPI: PetAPI = {
         ipcRenderer.invoke(IPC_CHANNELS.getMusicUrl, path),
     getAppVersion: (): Promise<string> => ipcRenderer.invoke(IPC_CHANNELS.getAppVersion),
     getUsageStats: () => ipcRenderer.invoke(IPC_CHANNELS.getUsageStats),
-    saveModelConfig: (settings) => ipcRenderer.invoke(IPC_CHANNELS.saveModelConfig, settings),
     recordUsageActivity: (kind, durationSeconds) =>
         ipcRenderer.invoke(IPC_CHANNELS.recordUsageActivity, kind, durationSeconds),
     sendChatMessage: (

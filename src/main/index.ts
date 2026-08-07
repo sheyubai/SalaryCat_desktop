@@ -114,9 +114,9 @@ function registerAssetProtocol(): void {
   });
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   registerAssetProtocol();
-  registerIpcHandlers();
+  await registerIpcHandlers();
   ipcMain.handle(IPC_CHANNELS.openSettingsWindow, () => {
     createSettingsWindow();
   });
