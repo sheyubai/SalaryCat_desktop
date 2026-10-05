@@ -53,7 +53,7 @@ export function loadPreferences(): UserPreferences {
     const stored = JSON.parse(localStorage.getItem(preferencesStorageKey) ?? "{}") as Partial<UserPreferences>;
     return {
       appearance: {
-        scale: numberInRange(stored.appearance?.scale, defaults.appearance.scale, 0.8, 1.25),
+        scale: numberInRange(stored.appearance?.scale, defaults.appearance.scale, 0.8, 1),
         opacity: numberInRange(stored.appearance?.opacity, defaults.appearance.opacity, 40, 100),
         alwaysOnTop: typeof stored.appearance?.alwaysOnTop === "boolean"
           ? stored.appearance.alwaysOnTop

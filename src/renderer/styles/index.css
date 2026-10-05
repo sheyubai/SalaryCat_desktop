@@ -424,6 +424,7 @@ button {
 }
 
 .pet-chat-input {
+  margin: 0;
   /* 底部对话输入框。 */
   position: absolute;
   z-index: 5;

@@ -8,7 +8,8 @@
     "happy": "cat.GIF",
     "sleep": "cat.GIF",
     "thinking": "cat.GIF",
-    "working": "cat.GIF"
+    "working": "cat.GIF",
+    "dancing": "cat.GIF"
   },
   "sounds": {
     "theme": "music.mp3"

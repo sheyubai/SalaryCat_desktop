@@ -8,7 +8,9 @@ import {
     type ChatRequest,
     type ChatResponse,
     type CharacterManifest,
+    type ModelConfigurationStatus,
     type PetAPI,
+    type UserLlmSettings,
     type WindowPosition,
     type WindowSize
 } from "../shared/contracts";
@@ -56,6 +58,10 @@ const petAPI: PetAPI = {
     getMusicUrl: (path: string): Promise<string> =>
         ipcRenderer.invoke(IPC_CHANNELS.getMusicUrl, path),
     getAppVersion: (): Promise<string> => ipcRenderer.invoke(IPC_CHANNELS.getAppVersion),
+    getModelConfiguration: (): Promise<ModelConfigurationStatus> =>
+        ipcRenderer.invoke(IPC_CHANNELS.getModelConfiguration),
+    saveModelConfiguration: (settings: UserLlmSettings): Promise<void> =>
+        ipcRenderer.invoke(IPC_CHANNELS.saveModelConfiguration, settings),
     getUsageStats: () => ipcRenderer.invoke(IPC_CHANNELS.getUsageStats),
     recordUsageActivity: (kind, durationSeconds) =>
         ipcRenderer.invoke(IPC_CHANNELS.recordUsageActivity, kind, durationSeconds),

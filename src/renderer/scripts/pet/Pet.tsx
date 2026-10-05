@@ -8,10 +8,12 @@ import { DEFAULT_CONFIG } from "../../../shared/defaultConfig";
 import { PetActionMenu } from "../../components/pet/PetActionMenu";
 import { PetChatInput } from "../../components/pet/PetChatInput";
 import { PetSpeechBubble } from "../../components/pet/PetSpeechBubble";
+import { PetSprite } from "../../components/pet/PetSprite";
 import { usePetBehavior } from "./usePetBehavior";
+import { usePetChat } from "./usePetChat";
+import { usePetDance } from "./usePetDance";
 import { usePetStore } from "./petStore";
 import {
-  loadLlmSettings,
   loadPreferences,
   preferencesChannelName
 } from "./userPreferences";
@@ -24,19 +26,15 @@ export function Pet({ manifest }: PetProps) {
   const [preferences, setPreferences] = useState(loadPreferences);
   const state = usePetStore((store) => store.state);
   const message = usePetStore((store) => store.message);
-  const setState = usePetStore((store) => store.setState);
-  const { wake, showPersistentMessage, dismissMessage } = usePetBehavior(preferences.behavior);
+  const themeUrl = manifest.sounds?.theme ? window.petAPI.assetUrl(manifest.sounds.theme) : "";
+  const dance = usePetDance(preferences.music, themeUrl);
+  const behavior = usePetBehavior(preferences.behavior, dance.playing || dance.status === "starting");
+  const { wake, dismissMessage } = behavior;
+  const { sending, sendMessage } = usePetChat(behavior);
   const [menuOpen, setMenuOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
-  const [musicEnabled, setMusicEnabled] = useState(false);
-  const [sending, setSending] = useState(false);
-  const [streaming, setStreaming] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [customMusicUrl, setCustomMusicUrl] = useState("");
-  const conversationId = useRef<string | undefined>(undefined);
-  const audio = useRef<HTMLAudioElement>(null);
   const chatStartedAt = useRef<number | null>(null);
-  const danceStartedAt = useRef<number | null>(null);
   const drag = useRef<{
     pointerX: number;
     pointerY: number;
@@ -44,14 +42,15 @@ export function Pet({ manifest }: PetProps) {
     moved: boolean;
   } | null>(null);
   const dragRequest = useRef(0);
-  const animation =
+  const restingAnimation =
     manifest.animations[state] ??
     manifest.animations[manifest.defaultState] ??
     manifest.animations.idle;
-  const music = customMusicUrl || manifest.sounds?.theme;
+  const danceAnimation = manifest.animations.dancing ?? restingAnimation;
+  const animation = dance.playing ? danceAnimation : restingAnimation;
 
   useEffect(() => {
-    let passthrough = false;
+    let passthrough = true;
     const interactiveSelector = [
       ".pet-hitbox",
       ".pet-action-button",
@@ -99,37 +98,6 @@ export function Pet({ manifest }: PetProps) {
     });
   }, [preferences.appearance.alwaysOnTop, preferences.appearance.scale]);
 
-  useEffect(() => {
-    let active = true;
-    if (!preferences.music.sourcePath) {
-      setCustomMusicUrl("");
-      return () => {
-        active = false;
-      };
-    }
-    window.petAPI
-      .getMusicUrl(preferences.music.sourcePath)
-      .then((url) => {
-        if (active) {
-          setCustomMusicUrl(url);
-        }
-      })
-      .catch(() => {
-        if (active) {
-          setCustomMusicUrl("");
-        }
-      });
-    return () => {
-      active = false;
-    };
-  }, [preferences.music.sourcePath]);
-
-  useEffect(() => {
-    if (audio.current) {
-      audio.current.volume = preferences.music.volume / 100;
-    }
-  }, [preferences.music.volume]);
-
   if (!animation) {
     return <div className="error-bubble">角色包没有可用动画。</div>;
   }
@@ -175,64 +143,13 @@ export function Pet({ manifest }: PetProps) {
     const wasMoved = drag.current?.moved ?? false;
     drag.current = null;
     if (!wasMoved) {
-      wake();
-      setMenuOpen((open) => !open);
+      toggleMenu();
     }
   }
 
-  async function toggleMusic(): Promise<void> {
-    if (!audio.current || !music) {
-      wake("角色包里还没有音乐。", DEFAULT_CONFIG.behavior.replyDurationMs);
-      return;
-    }
-    if (musicEnabled) {
-      audio.current.pause();
-      setMusicEnabled(false);
-      recordDuration("dance", danceStartedAt);
-      return;
-    }
-    try {
-      await audio.current.play();
-      setMusicEnabled(true);
-      danceStartedAt.current = Date.now();
-    } catch (error) {
-      console.error("音乐播放失败：", error);
-      setMusicEnabled(false);
-      wake("音乐播放失败，请检查音频文件。", DEFAULT_CONFIG.behavior.replyDurationMs);
-    }
-  }
-
-  async function sendMessage(input: string): Promise<void> {
-    if (sending) {
-      return;
-    }
-    setSending(true);
-    setStreaming(true);
-    setState("thinking", "让本喵想想哦...");
-    try {
-      let streamedAnswer = "";
-      const llmSettings = loadLlmSettings();
-      const response = await window.petAPI.sendChatMessage({
-        message: input,
-        conversationId: conversationId.current,
-        apiKey: llmSettings.apiKey || undefined,
-        baseUrl: llmSettings.baseUrl || undefined,
-        model: llmSettings.model || undefined
-      }, (text) => {
-        streamedAnswer += text;
-        setState("happy", streamedAnswer);
-      });
-      conversationId.current = response.conversationId;
-      showPersistentMessage(response.answer);
-    } catch (error) {
-      const reason = error instanceof Error
-        ? error.message.replace(/^Error invoking remote method '[^']+': Error: /, "")
-        : "请求失败，请稍后重试。";
-      showPersistentMessage(reason);
-    } finally {
-      setStreaming(false);
-      setSending(false);
-    }
+  function toggleMenu(): void {
+    wake();
+    setMenuOpen((open) => !open);
   }
 
   function recordDuration(kind: "chat" | "dance", startedAt: React.MutableRefObject<number | null>): void {
@@ -267,7 +184,7 @@ export function Pet({ manifest }: PetProps) {
           key={state}
           message={message}
           thinking={state === "thinking"}
-          streaming={streaming}
+          streaming={sending}
           dismissAfterMs={preferences.behavior.dismissAfterSeconds * 1_000}
           onDismiss={dismissMessage}
         />
@@ -275,24 +192,24 @@ export function Pet({ manifest }: PetProps) {
       {menuOpen && (
         <PetActionMenu
           chatOpen={chatOpen}
-          musicAvailable={Boolean(music)}
-          musicEnabled={musicEnabled}
+          danceStatus={dance.status}
+          musicError={dance.error}
           settingsOpen={settingsOpen}
           onToggleChat={toggleChat}
-          onToggleMusic={() => void toggleMusic()}
+          onToggleMusic={dance.toggle}
           onOpenSettings={() => void toggleSettings()}
         />
       )}
-      <img
-        className="pet-sprite"
+      <PetSprite
         src={window.petAPI.assetUrl(animation)}
-        alt={manifest.name}
-        draggable={false}
+        name={manifest.name}
       />
+      {dance.playing && <div className="pet-dance-notes" aria-hidden="true"><span>♪</span><span>♫</span></div>}
       <button
         className="pet-hitbox"
         type="button"
         aria-label={`和${manifest.name}互动`}
+        onClick={(event) => { if (event.detail === 0) toggleMenu(); }}
         onPointerDown={(event) => void beginDrag(event)}
         onPointerMove={continueDrag}
         onPointerUp={finishDrag}
@@ -302,15 +219,6 @@ export function Pet({ manifest }: PetProps) {
         }}
       />
       {chatOpen && <PetChatInput onSend={sendMessage} disabled={sending} />}
-      {music && (
-        <audio
-          ref={audio}
-          src={customMusicUrl || window.petAPI.assetUrl(music)}
-          loop={preferences.music.loop}
-          preload="metadata"
-          onEnded={() => { setMusicEnabled(false); recordDuration("dance", danceStartedAt); }}
-        />
-      )}
     </main>
   );
 }

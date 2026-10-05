@@ -10,6 +10,8 @@ import {
   type ChatResponse,
   type CharacterManifest,
   type AuthSession,
+  type ModelConfigurationStatus,
+  type UserLlmSettings,
   type WindowPosition,
   type WindowSize
 } from "../../shared/contracts";
@@ -315,10 +317,7 @@ export async function registerIpcHandlers(): Promise<void> {
           method: "POST",
           body: JSON.stringify({
             message,
-            conversation_id: request.conversationId,
-            llm_api_key: request.apiKey,
-            llm_base_url: request.baseUrl,
-            llm_model: request.model
+            conversation_id: request.conversationId
           })
         });
       } catch {
@@ -514,6 +513,43 @@ export async function registerIpcHandlers(): Promise<void> {
     }
     return response.json();
   });
+
+  ipcMain.handle(IPC_CHANNELS.getModelConfiguration, async (): Promise<ModelConfigurationStatus> => {
+    const response = await backendFetch("/api/v1/model-config");
+    const body = await response.json().catch(() => null);
+    if (!response.ok) {
+      throw new Error(errorDetail(body, response.status));
+    }
+    const value = unwrapBackendBody(body);
+    if (typeof value !== "object" || value === null) {
+      throw new Error("后端返回的模型配置无效。");
+    }
+    const config = value as Record<string, unknown>;
+    return {
+      configured: config.configured === true,
+      baseUrl: typeof config.base_url === "string" ? config.base_url : null,
+      model: typeof config.model === "string" ? config.model : null
+    };
+  });
+
+  ipcMain.handle(
+    IPC_CHANNELS.saveModelConfiguration,
+    async (_event, settings: UserLlmSettings): Promise<void> => {
+      const apiKey = settings.apiKey.trim();
+      const baseUrl = settings.baseUrl.trim().replace(/\/$/, "");
+      const model = settings.model.trim();
+      if (!apiKey || !baseUrl || !model) {
+        throw new Error("请完整填写 API Key、接口地址和模型名称。");
+      }
+      const response = await backendFetch("/api/v1/model-config", {
+        method: "PUT",
+        body: JSON.stringify({ api_key: apiKey, base_url: baseUrl, model })
+      });
+      if (!response.ok) {
+        throw new Error(errorDetail(await response.json().catch(() => null), response.status));
+      }
+    }
+  );
 
   ipcMain.handle(
     IPC_CHANNELS.recordUsageActivity,

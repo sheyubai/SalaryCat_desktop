@@ -3,16 +3,15 @@ import { useEffect, useState } from "react";
 import type { AuthSession, UsageStats, UserLlmSettings } from "../../../shared/contracts";
 import { PetSettingsModal } from "../../components/pet/PetSettingsModal";
 import {
-  llmSettingsStorageKey,
-  llmSettingsKeyFor,
-  loadLlmSettings,
   loadPreferences,
   preferencesChannelName,
   preferencesStorageKey
 } from "../../scripts/pet/userPreferences";
 
+const emptyModelSettings: UserLlmSettings = { apiKey: "", baseUrl: "", model: "", configured: false };
+
 export function SettingsPage() {
-  const [settings, setSettings] = useState<UserLlmSettings>(loadLlmSettings);
+  const [settings, setSettings] = useState<UserLlmSettings>(emptyModelSettings);
   const [preferences, setPreferences] = useState(loadPreferences);
   const [authSession, setAuthSession] = useState<AuthSession | null | undefined>(undefined);
   const [usageStats, setUsageStats] = useState<UsageStats | null>(null);
@@ -21,10 +20,21 @@ export function SettingsPage() {
   useEffect(() => {
     window.petAPI.getAuthSession().then((session) => {
       setAuthSession(session);
-      setSettings(loadLlmSettings(llmSettingsKeyFor(session?.userId ?? session?.username)));
+      if (!session) {
+        setSettings(emptyModelSettings);
+        return;
+      }
+      window.petAPI.getModelConfiguration()
+        .then((config) => setSettings({
+          apiKey: "",
+          baseUrl: config.baseUrl ?? "",
+          model: config.model ?? "",
+          configured: config.configured
+        }))
+        .catch(() => setSettings(emptyModelSettings));
     }).catch(() => {
       setAuthSession(null);
-      setSettings(loadLlmSettings());
+      setSettings(emptyModelSettings);
     });
   }, []);
 
@@ -44,22 +54,26 @@ export function SettingsPage() {
   }, []);
 
   async function saveSettings(nextSettings: UserLlmSettings): Promise<void> {
-    setSettings(nextSettings);
-    localStorage.setItem(
-      llmSettingsKeyFor(authSession?.userId ?? authSession?.username),
-      JSON.stringify(nextSettings)
-    );
+    await window.petAPI.saveModelConfiguration(nextSettings);
+    setSettings({ ...nextSettings, apiKey: "", configured: true });
   }
 
   async function logout(): Promise<void> {
     await window.petAPI.logout();
     setAuthSession(null);
-    setSettings(loadLlmSettings(llmSettingsStorageKey));
+    setSettings(emptyModelSettings);
   }
 
   function handleLoggedIn(session: AuthSession): void {
     setAuthSession(session);
-    setSettings(loadLlmSettings(llmSettingsKeyFor(session.userId ?? session.username)));
+    void window.petAPI.getModelConfiguration()
+      .then((config) => setSettings({
+        apiKey: "",
+        baseUrl: config.baseUrl ?? "",
+        model: config.model ?? "",
+        configured: config.configured
+      }))
+      .catch(() => setSettings(emptyModelSettings));
   }
 
   if (authSession === undefined) {

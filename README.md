@@ -18,6 +18,7 @@
 
 - 桌面悬浮桌宠、拖动和系统托盘
 - 角色动画、音乐和可扩展角色资源
+- GIF 独立循环播放，音乐可单独暂停/继续，支持循环播放和自选音乐
 - 聊天输入框与 Markdown 回复气泡
 - AI 回复流式显示、思考动画和长内容滚动
 - 连续对话，会话 ID 自动续传
@@ -25,6 +26,8 @@
 - 透明区域鼠标穿透，不阻挡其他桌面窗口
 
 ## 项目结构
+
+第一次阅读前端，先看 [中文调用流程与开发指南](docs/frontend-guide.md)。
 
 ```text
 src/
@@ -83,6 +86,8 @@ npm run dev
 ```powershell
 npm run dev        # 开发模式
 npm run typecheck  # TypeScript 类型检查
+npm test           # 聊天与行为计时回归测试（模拟后端）
+npm run test:desktop # 构建并验证实际 Electron 音频、动画与布局（隔离配置、模拟 IPC 服务端）
 npm run build      # 生产构建
 npm run pack       # 构建并生成未安装目录
 npm run dist       # 构建 Windows 安装包
@@ -104,9 +109,20 @@ GET  /api/v1/usage              # 当前登录用户的 Token 使用统计
 
 打开设置页的“账号登录”即可注册或登录。桌面端启动后会自动恢复本机保存的登录凭证；access token 过期时由主进程使用 refresh token 自动换新，刷新失败才要求重新登录。登录凭证由 Electron 主进程使用系统加密存储，完整对话和 Token 使用统计由后端按登录用户写入、查询 MySQL。
 
-模型配置只保存在当前电脑，聊天时按需发送到已登录的后端；服务端默认模型仍应配置在后端 `.env`。桌面端只保存表单草稿和当前运行期间的 `conversation_id`。
+模型配置通过设置页保存到后端，API Key 由后端加密存储且不回显。聊天请求只携带消息和可选的 `conversation_id`，不再携带模型 Key。桌面端只在当前运行期间保存会话 ID，外观、音乐和行为偏好保存在本机。
 
 ## 角色资源
+
+### 跳舞与音乐
+
+- 点击小猫展开菜单，通过音符/暂停图标控制音乐，不显示额外的播放状态文字标签。
+- GIF 始终独立循环播放，暂停音乐、缓冲或曲目结束不会冻结 GIF。未开启循环时，曲目结束后音乐停止。
+- 在“音乐配置”中选择自选文件并保存。换文件会停止当前曲目，需要手动开始新曲目；保存音量或循环设置不会打断播放。
+- 移除自选文件并保存，可恢复角色自带音乐。文件失效时，悬停音符按钮查看错误，点击可重试，也可以打开设置更换文件。
+- 跳舞期间不自动休眠，可以同时聊天。系统开启“减少动态效果”时保留静态角色，音乐仍可播放。
+- 播放时每 30 秒结算一次时长，暂停、切歌、结束时补记尾段。后端不可用时仍能跳舞；统计上报为尽力发送，不保证断网或强制结束进程时的数据补偿。
+
+`npm run test:desktop` 使用实际构建的 renderer/preload、角色 GIF 和音乐，但模拟后端与部分窗口 IPC，不读取真实登录信息。截图和验证结果在 `out/dance-smoke/`；它不等于真实服务器记账的端到端验证。
 
 默认角色位于：
 
@@ -117,7 +133,7 @@ resources/characters/salary-cat/
 └─ *.mp3 / *.wav
 ```
 
-`manifest.json` 决定角色名称、默认状态、各状态动画和主题音乐。新增角色后，将角色目录放入 `resources/characters/`，并在配置中指定对应的 `characterId`。
+`manifest.json` 决定角色名称、默认状态、各状态动画和主题音乐。可选的 `animations.dancing` 用于指定播放音乐时的素材；默认小猫复用已有 GIF，音乐暂停时 GIF 仍继续播放。仅在系统开启“减少动态效果”时显示静态帧。新增角色后，将角色目录放入 `resources/characters/`，并在配置中指定对应的 `characterId`。
 
 ## 常见问题
 
@@ -142,7 +158,7 @@ npm run dev
 
 ### 修改提示文字
 
-睡眠提示集中在 `src/shared/defaultConfig.ts` 的 `behavior.sleepMessages`。思考、错误和音乐提示位于 `src/renderer/scripts/pet/Pet.tsx`。
+睡眠提示集中在 `src/shared/defaultConfig.ts` 的 `behavior.sleepMessages`。思考提示在 `src/renderer/scripts/pet/usePetBehavior.ts`，聊天错误处理在 `usePetChat.ts`，音乐提示仍在 `Pet.tsx`。
 
 
 

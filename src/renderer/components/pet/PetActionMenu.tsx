@@ -1,7 +1,9 @@
+import type { DanceStatus } from "../../scripts/pet/usePetDance";
+
 interface PetActionMenuProps {
   chatOpen: boolean;
-  musicAvailable: boolean;
-  musicEnabled: boolean;
+  danceStatus: DanceStatus;
+  musicError: string;
   settingsOpen: boolean;
   onToggleChat: () => void;
   onToggleMusic: () => void;
@@ -39,14 +41,24 @@ function SettingsIcon() {
 
 export function PetActionMenu({
   chatOpen,
-  musicAvailable,
-  musicEnabled,
+  danceStatus,
+  musicError,
   settingsOpen,
   onToggleChat,
   onToggleMusic,
   onOpenSettings
 }: PetActionMenuProps) {
-  const musicLabel = musicEnabled ? "关闭音乐" : "开启音乐";
+  const musicEnabled = danceStatus === "playing" || danceStatus === "starting";
+  const musicLabels: Record<DanceStatus, string> = {
+    loading: "正在加载音乐",
+    unavailable: "请先在设置中选择音乐",
+    error: "重试播放",
+    starting: "取消播放",
+    playing: "暂停音乐",
+    paused: "继续音乐",
+    ready: "播放音乐"
+  };
+  const musicLabel = musicLabels[danceStatus];
   const chatLabel = chatOpen ? "收起对话" : "开始对话";
 
   return (
@@ -55,8 +67,10 @@ export function PetActionMenu({
         className={`pet-action-button${musicEnabled ? " is-active" : ""}`}
         type="button"
         aria-label={musicLabel}
+        title={musicError || undefined}
         data-tooltip={musicLabel}
-        disabled={!musicAvailable}
+        aria-pressed={musicEnabled}
+        disabled={danceStatus === "loading" || danceStatus === "unavailable"}
         onClick={onToggleMusic}
       >
         <MusicIcon enabled={musicEnabled} />

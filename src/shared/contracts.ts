@@ -10,7 +10,7 @@ export interface CharacterManifest {
   name: string;
   version: string;
   defaultState: PetState;
-  animations: Partial<Record<PetState, string>>;
+  animations: Partial<Record<PetState | "dancing", string>>;
   sounds?: Record<string, string>;
 }
 
@@ -27,15 +27,21 @@ export interface WindowSize {
 export interface ChatRequest {
   message: string;
   conversationId?: string;
-  apiKey?: string;
-  baseUrl?: string;
-  model?: string;
 }
 
 export interface UserLlmSettings {
   apiKey: string;
   baseUrl: string;
   model: string;
+  /** True when the backend has an encrypted API key for the current account. */
+  configured?: boolean;
+}
+
+/** Server-owned model configuration. API keys are write-only and never returned. */
+export interface ModelConfigurationStatus {
+  configured: boolean;
+  baseUrl: string | null;
+  model: string | null;
 }
 
 export interface UserAppearanceSettings {
@@ -115,6 +121,8 @@ export interface PetAPI {
   selectMusicFile(): Promise<string | null>;
   getMusicUrl(path: string): Promise<string>;
   getAppVersion(): Promise<string>;
+  getModelConfiguration(): Promise<ModelConfigurationStatus>;
+  saveModelConfiguration(settings: UserLlmSettings): Promise<void>;
   getUsageStats(): Promise<UsageStats>;
   recordUsageActivity(kind: "chat" | "dance", durationSeconds: number): Promise<void>;
   sendChatMessage(
@@ -142,6 +150,8 @@ export const IPC_CHANNELS = {
   selectMusicFile: "music:select-file",
   getMusicUrl: "music:get-url",
   getAppVersion: "app:version",
+  getModelConfiguration: "model-config:get",
+  saveModelConfiguration: "model-config:save",
   getUsageStats: "usage:stats",
   recordUsageActivity: "usage:record-activity",
   sendChatMessage: "chat:send",

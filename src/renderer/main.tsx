@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 
 import { PetPage } from "./pages/pet/PetPage";
 import "./styles/index.css";
+import "./styles/dance.css";
 
 const root = document.getElementById("root");
 if (!root) {

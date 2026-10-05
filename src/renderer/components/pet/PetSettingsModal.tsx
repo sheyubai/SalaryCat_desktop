@@ -81,6 +81,10 @@ export function PetSettingsModal({
   } | null>(null);
 
   useEffect(() => {
+    setDraft(settings);
+  }, [settings]);
+
+  useEffect(() => {
     if (!notice) {
       return;
     }
@@ -232,7 +236,7 @@ export function PetSettingsModal({
           <header className="settings-content-header">
             <div><p className="settings-eyebrow">DESKTOP PET</p><h2>外观与窗口</h2><p>调整月薪喵的视觉效果和窗口行为。</p></div>
           </header>
-          <label className="settings-field settings-range"><span>桌宠大小 <b>{Math.round(appearance.scale * 100)}%</b></span><input type="range" min="0.8" max="1.25" step="0.05" value={appearance.scale} onChange={(event) => setAppearance({ ...appearance, scale: Number(event.target.value) })} /></label>
+          <label className="settings-field settings-range"><span>桌宠大小 <b>{Math.round(appearance.scale * 100)}%</b></span><input type="range" min="0.8" max="1" step="0.05" value={appearance.scale} onChange={(event) => setAppearance({ ...appearance, scale: Number(event.target.value) })} /></label>
           <label className="settings-field settings-range"><span>桌宠透明度 <b>{appearance.opacity}%</b></span><input type="range" min="40" max="100" step="5" value={appearance.opacity} onChange={(event) => setAppearance({ ...appearance, opacity: Number(event.target.value) })} /></label>
           <label className="settings-switch"><input type="checkbox" checked={appearance.alwaysOnTop} onChange={(event) => setAppearance({ ...appearance, alwaysOnTop: event.target.checked })} /><span><b>始终置顶</b><small>让月薪喵显示在其他窗口上方。</small></span></label>
           <footer className="settings-actions"><button type="submit" className="settings-save">保存设置</button></footer>
@@ -259,14 +263,15 @@ export function PetSettingsModal({
       return (
         <form className="settings-content" onSubmit={saveMusic}>
           <header className="settings-content-header">
-            <div><p className="settings-eyebrow">PERSONAL MUSIC</p><h2>音乐配置</h2><p>设置后，桌宠的音乐按钮会优先播放此文件。</p></div>
+            <div><p className="settings-eyebrow">PERSONAL MUSIC</p><h2>音乐配置</h2><p>音符按钮控制音乐播放与暂停，小猫 GIF 始终独立播放。</p></div>
           </header>
           <div className="music-file-picker">
             <span className="music-file-icon">♫</span>
-            <div><b>{fileName || "还没有选择音乐"}</b><small>{music.sourcePath || "支持 MP3、WAV、OGG、M4A、FLAC"}</small></div>
+            <div><b>{fileName || "使用角色自带音乐"}</b><small>{music.sourcePath || "也可选择 MP3、WAV、OGG、M4A、FLAC 文件"}</small></div>
             <button type="button" onClick={() => void selectMusicFile()}>选择文件</button>
           </div>
           {music.sourcePath && <button className="music-clear" type="button" onClick={() => setMusic({ ...music, sourcePath: "" })}>移除当前音乐</button>}
+          <p className="settings-music-hint">保存新文件后会暂停当前音乐，点击音符按钮播放新曲目。保存音量和循环设置不会打断播放；移除自选文件后恢复角色音乐。</p>
           <label className="settings-field settings-range"><span>播放音量 <b>{music.volume}%</b></span><input type="range" min="0" max="100" step="5" value={music.volume} onChange={(event) => setMusic({ ...music, volume: Number(event.target.value) })} /></label>
           <label className="settings-switch"><input type="checkbox" checked={music.loop} onChange={(event) => setMusic({ ...music, loop: event.target.checked })} /><span><b>循环播放</b><small>开启后，音乐结束时会自动重新播放。</small></span></label>
           <footer className="settings-actions"><button type="submit" className="settings-save">保存设置</button></footer>
@@ -290,7 +295,9 @@ export function PetSettingsModal({
           <div>
             <p className="settings-eyebrow">AI PROVIDER</p>
             <h2>模型配置</h2>
-            <p>使用你自己的 API Key 和 OpenAI-compatible 服务。</p>
+            <p>{settings.configured
+              ? "已加载当前账号的后端模型配置。"
+              : "使用你自己的 API Key 和 OpenAI-compatible 服务。"}</p>
           </div>
         </header>
 
@@ -300,7 +307,7 @@ export function PetSettingsModal({
             <input
               type={showApiKey ? "text" : "password"}
               value={draft.apiKey}
-              placeholder="sk-..."
+              placeholder={settings.configured ? "已安全保存；修改时请输入新的 API Key" : "sk-..."}
               autoComplete="off"
               onChange={(event) => {
                 setDraft({ ...draft, apiKey: event.target.value });
@@ -319,7 +326,9 @@ export function PetSettingsModal({
               <CopyIcon />
             </button>
           </div>
-          <small>仅用于本次用户配置的模型调用。</small>
+          <small>{settings.configured
+            ? "已保存的 API Key 不会回显；如需更换模型配置，请重新输入完整 Key。"
+            : "保存后将仅由后端加密存储和使用。"}</small>
         </label>
         <label className="settings-field">
           <span>接口地址</span>
