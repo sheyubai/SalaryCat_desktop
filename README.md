@@ -2,6 +2,17 @@
 
 Electron + React + TypeScript 桌面小猫：拖动、托盘、角色动画、音乐、聊天及独立设置窗口。后端是同级独立仓库 `SalaryCat_Back`。
 
+## 截图
+
+<img width="311" height="287" alt="桌宠界面" src="https://github.com/user-attachments/assets/377c058d-3437-4b94-b85d-2cccc8cd0e26" />
+<img width="296" height="278" alt="聊天界面" src="https://github.com/user-attachments/assets/70d4430a-8329-40aa-8f37-7963f7c9ba0b" />
+<img width="285" height="293" alt="角色界面" src="https://github.com/user-attachments/assets/db2610e0-1466-4cec-8411-5e86129dc73e" />
+
+<img width="353" height="299" alt="image" src="https://github.com/user-attachments/assets/52e9814e-ad28-4998-b0ce-4a35ede421b5" />
+<img width="422" height="339" alt="image" src="https://github.com/user-attachments/assets/4bd97916-2add-4284-b719-4f045ba16f57" />
+<img width="620" height="377" alt="image" src="https://github.com/user-attachments/assets/3b164da5-0261-4132-bd5b-7098b3788a54" />
+<img width="528" height="338" alt="image" src="https://github.com/user-attachments/assets/3efbfa4c-2fcd-47ae-b9ba-db09cea7a057" />
+
 **开发前先看 [前后端架构图与开发流程](docs/frontend-guide.md)**，其中包含阅读顺序、文件职责、聊天链路和分阶段整理方案。
 
 ## 项目结构
