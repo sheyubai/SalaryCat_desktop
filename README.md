@@ -15,6 +15,25 @@ resources/      程序必需的 GIF、音乐、图标、角色清单
 scripts/        安装检查及桌面集成测试
 ```
 
+### 哪些文件需要保留
+
+| 文件或目录 | 用途与处理方式 |
+| --- | --- |
+| `src/renderer/` | React 界面、组件、状态、样式；保留 |
+| `src/main/`、`src/preload/`、`src/shared/` | 桌面窗口、系统能力、后端通信及跨进程契约；保留 |
+| `src/**/*.test.ts(x)`、`vitest.config.ts` | 有效回归测试及配置；保留 |
+| `resources/` | 小猫 GIF、图标、音乐和角色清单；全部有运行用途 |
+| `scripts/` | package.json 使用的安装检查、桌面测试脚本及辅助脚本；保留 |
+| `package.json`、`package-lock.json` | 项目命令、依赖与可复现安装；保留 |
+| `electron.vite.config.ts`、`tsconfig.json` | Electron/React 构建与 TypeScript 配置；保留 |
+| `.github/`、`.gitignore`、`LICENSE`、`README.md`、`docs/` | 构建发布、版本管理规则、许可证及开发说明；保留 |
+| `.git/` | Git 历史与仓库配置；保留 |
+| `node_modules/` | 已安装的开发依赖，可用 npm ci 重建；当前保留，避免下次启动重新安装 |
+| `out/main/`、`out/preload/`、`out/renderer/` | 当前构建结果，可用 npm run build 重建；npm start 会使用它们 |
+| `.idea/` | 本机 IDE 配置，不是运行代码；保留个人设置，不提交 Git |
+
+2026-10-10 已删除旧 Python 环境 `.venv/`、无源码的 `electron/`、旧打包目录 `release/`，以及 `out/chat-smoke/`、`out/dance-smoke/` 中的截图和测试产物，共约 1 GiB。`release/` 会在下次打包时重新生成。28 个业务 TypeScript/TSX 文件都能从运行入口沿导入关系到达，9 个测试文件保留；未发现可整文件删除的闲置业务源码。
+
 ## 本地启动
 
 需要 Node.js 22.12+、npm。统一使用 `package-lock.json`；首次安装或锁文件变化后执行 `npm ci`。

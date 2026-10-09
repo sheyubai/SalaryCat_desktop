@@ -172,4 +172,4 @@ flowchart LR
 - 保留运行素材、本机密钥和用户数据；清理产物不清理业务数据。
 - 前端统一 `npm` 与 `package-lock.json`，不并行维护第二套锁文件。
 
-本次旧目录清理尚有遗留：`.venv/`、`release/`、空的 `electron/` 和 `out/chat-smoke/`、`out/dance-smoke/`。递归删除被工具策略拒绝，文件仍在；这些目录已核对为旧环境或生成产物，后续可手动清理。旧 smoke 产物已排除在安装包收集范围外。
+2026-10-10 已清理上述旧产物：`.venv/`、`release/`、无源码的 `electron/` 和 `out/chat-smoke/`、`out/dance-smoke/`，包括 16 张旧测试截图。当前运行素材、有效测试、依赖和构建结果保留。各目录是否需要保留，见 [README 文件清单](../README.md#哪些文件需要保留)。
