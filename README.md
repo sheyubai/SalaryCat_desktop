@@ -1,165 +1,70 @@
 # Salary Cat Desktop
 
-一只可爱的桌面月薪猫，基于 Electron、React 和 TypeScript。它常驻系统托盘，可以拖动、播放角色音乐，并通过独立的 Java/Spring Boot 后端与 OpenAI-compatible 模型对话。
+Electron + React + TypeScript 桌面小猫：拖动、托盘、角色动画、音乐、聊天及独立设置窗口。后端是同级独立仓库 `SalaryCat_Back`。
 
-## 截图
-
-<img width="311" height="287" alt="桌宠界面" src="https://github.com/user-attachments/assets/377c058d-3437-4b94-b85d-2cccc8cd0e26" />
-<img width="296" height="278" alt="聊天界面" src="https://github.com/user-attachments/assets/70d4430a-8329-40aa-8f37-7963f7c9ba0b" />
-<img width="285" height="293" alt="角色界面" src="https://github.com/user-attachments/assets/db2610e0-1466-4cec-8411-5e86129dc73e" />
-
-<img width="353" height="299" alt="image" src="https://github.com/user-attachments/assets/52e9814e-ad28-4998-b0ce-4a35ede421b5" />
-<img width="422" height="339" alt="image" src="https://github.com/user-attachments/assets/4bd97916-2add-4284-b719-4f045ba16f57" />
-<img width="620" height="377" alt="image" src="https://github.com/user-attachments/assets/3b164da5-0261-4132-bd5b-7098b3788a54" />
-<img width="528" height="338" alt="image" src="https://github.com/user-attachments/assets/3efbfa4c-2fcd-47ae-b9ba-db09cea7a057" />
-
-
-## 功能
-
-- 桌面悬浮桌宠、拖动和系统托盘
-- 角色动画、音乐和可扩展角色资源
-- GIF 独立循环播放，音乐可单独暂停/继续，支持循环播放和自选音乐
-- 聊天输入框与 Markdown 回复气泡
-- AI 回复流式显示、思考动画和长内容滚动
-- 连续对话，会话 ID 自动续传
-- 回复气泡在鼠标移出 40 秒后自动隐藏
-- 透明区域鼠标穿透，不阻挡其他桌面窗口
+**开发前先看 [前后端架构图与开发流程](docs/frontend-guide.md)**，其中包含阅读顺序、文件职责、聊天链路和分阶段整理方案。
 
 ## 项目结构
 
-第一次阅读前端，先看 [中文调用流程与开发指南](docs/frontend-guide.md)。
-
 ```text
-src/
-├─ main/       Electron 主进程：窗口、托盘、资源协议和 IPC
-├─ preload/    安全桥：向渲染进程暴露受限 API
-├─ renderer/   React 界面：桌宠、聊天框、回复气泡
-└─ shared/     主进程与渲染进程共享的类型和默认配置
-resources/     角色图片、GIF、音乐和 manifest.json
-electron.vite.config.ts
-package.json
+src/main/       Electron 主进程：窗口、托盘、IPC、后端通信
+src/preload/    window.petAPI 安全桥
+src/renderer/   React 页面、组件和交互逻辑
+src/shared/     IPC 类型和默认配置
+resources/      程序必需的 GIF、音乐、图标、角色清单
+scripts/        安装检查及桌面集成测试
 ```
 
-后端是同级目录中的独立项目：`E:\Project\SalaryCat_server`，不属于本仓库的 `src/`。原 Python 后端 `E:\Project\SalaryCat_backend` 仍可作为回退服务。
+## 本地启动
 
-## 环境要求
+需要 Node.js 22.12+、npm。统一使用 `package-lock.json`；首次安装或锁文件变化后执行 `npm ci`。
 
-- Windows
-- Node.js 20 或更高版本
-- npm
-- 已启动的 Salary Cat Java 后端（`E:\Project\SalaryCat_server`）
-- 后端可访问 MySQL 和已配置的 LLM 服务
-
-## 开发启动
-
-先启动后端（另开一个 PowerShell）：
+先按后端 README 启动 `SalaryCat_Back`，默认地址为 `http://127.0.0.1:8000`，再在本项目目录执行：
 
 ```powershell
-cd E:\Project\SalaryCat_server
-mvn spring-boot:run -pl salary-cat-web -am
-```
-
-确认后端可以访问：
-
-- http://127.0.0.1:8000/api/v1/health/live
-- http://127.0.0.1:8000/api/v1/health/ready
-
-再启动桌面端：
-
-```powershell
-cd E:\Project\SalaryCat_Desktop
-npm install
+npm ci
 npm run dev
 ```
 
-如果后端不是默认的 `http://127.0.0.1:8000`，在启动 Electron 前设置：
+自定义后端地址或客户端令牌时，在启动前设置环境变量：
 
 ```powershell
 $env:SALARY_CAT_API_URL = "http://127.0.0.1:9000"
-# 如果后端开启了客户端令牌校验：
-$env:SALARY_CAT_CLIENT_TOKEN = "替换为后端 SALARY_CAT_CLIENT_TOKEN"
+$env:SALARY_CAT_CLIENT_TOKEN = "与后端一致的客户端令牌"
 npm run dev
 ```
+
+在设置页登录并保存模型配置。模型 API Key 由后端加密保存；桌面端只保存系统加密后的登录凭证。外观、行为、音乐偏好保存在本机。
 
 ## 常用命令
 
-```powershell
-npm run dev        # 开发模式
-npm run typecheck  # TypeScript 类型检查
-npm test           # 聊天与行为计时回归测试（模拟后端）
-npm run test:desktop # 构建并验证实际 Electron 音频、动画与布局（隔离配置、模拟 IPC 服务端）
-npm run build      # 生产构建
-npm run pack       # 构建并生成未安装目录
-npm run dist       # 构建 Windows 安装包
-```
+| 命令 | 用途 |
+| --- | --- |
+| `npm run dev` | 开发模式 |
+| `npm test` | 单元测试 |
+| `npm run build` | 类型检查并构建 |
+| `npm run test:desktop` | 构建并验证真实 Electron 音频、GIF 和缩放 |
+| `npm run test:chat-desktop` | 构建并验证真实 IPC/HTTP 流式、取消、断流与设置重试 |
+| `npm run pack` | 生成可运行目录 |
+| `npm run dist` | 生成安装包 |
 
-## 登录与后端接口
+桌面集成测试使用隔离配置和本地测试服务，不使用真实账号或付费模型。结果输出到控制台，临时文件在退出时清理，不保存问答截图。
 
-桌面端通过 Electron 主进程调用：
+`out/`、`release/` 是可再生输出，不提交 Git。安装包仅收集 `out/main`、`out/preload`、`out/renderer` 和必要资源。
 
-```text
-POST /api/v1/auth/register      # 注册并登录
-POST /api/v1/auth/login         # 登录并返回 access_token/refresh_token
-POST /api/v1/auth/refresh       # 自动刷新短期 access token
-POST /api/v1/auth/logout        # 撤销当前会话
-POST /api/v1/chat/stream        # NDJSON 流式聊天
-POST /api/v1/chat               # 普通一次性聊天
-GET  /api/v1/usage              # 当前登录用户的 Token 使用统计
-```
+## 角色与交互约定
 
-打开设置页的“账号登录”即可注册或登录。桌面端启动后会自动恢复本机保存的登录凭证；access token 过期时由主进程使用 refresh token 自动换新，刷新失败才要求重新登录。登录凭证由 Electron 主进程使用系统加密存储，完整对话和 Token 使用统计由后端按登录用户写入、查询 MySQL。
+角色定义在 `resources/characters/salary-cat/manifest.json`，素材路径相对于 `resources/`：当前使用 `cat.GIF` 和 `music.mp3`，窗口/托盘使用 `cat.ico`。
 
-模型配置通过设置页保存到后端，API Key 由后端加密存储且不回显。聊天请求只携带消息和可选的 `conversation_id`，不再携带模型 Key。桌面端只在当前运行期间保存会话 ID，外观、音乐和行为偏好保存在本机。
+- 暂停音乐后 GIF 继续播放；仅系统“减少动态效果”偏好会使用静态帧。
+- 音乐状态由图标和悬停提示表达，不显示文字标签；暂停图标为音符加斜线。
+- 桌宠大小范围为 80%–100%。
+- 聊天可停止、开始新对话；失败保留草稿，账号切换清空当前会话。
+- 音乐时长上报为尽力发送；流式 Token 为估算值，不能用于核对模型账单。
 
-## 角色资源
+## 排查入口
 
-### 跳舞与音乐
-
-- 点击小猫展开菜单，通过音符/暂停图标控制音乐，不显示额外的播放状态文字标签。
-- GIF 始终独立循环播放，暂停音乐、缓冲或曲目结束不会冻结 GIF。未开启循环时，曲目结束后音乐停止。
-- 在“音乐配置”中选择自选文件并保存。换文件会停止当前曲目，需要手动开始新曲目；保存音量或循环设置不会打断播放。
-- 移除自选文件并保存，可恢复角色自带音乐。文件失效时，悬停音符按钮查看错误，点击可重试，也可以打开设置更换文件。
-- 跳舞期间不自动休眠，可以同时聊天。系统开启“减少动态效果”时保留静态角色，音乐仍可播放。
-- 播放时每 30 秒结算一次时长，暂停、切歌、结束时补记尾段。后端不可用时仍能跳舞；统计上报为尽力发送，不保证断网或强制结束进程时的数据补偿。
-
-`npm run test:desktop` 使用实际构建的 renderer/preload、角色 GIF 和音乐，但模拟后端与部分窗口 IPC，不读取真实登录信息。截图和验证结果在 `out/dance-smoke/`；它不等于真实服务器记账的端到端验证。
-
-默认角色位于：
-
-```text
-resources/characters/salary-cat/
-├─ manifest.json
-├─ *.gif / *.png
-└─ *.mp3 / *.wav
-```
-
-`manifest.json` 决定角色名称、默认状态、各状态动画和主题音乐。可选的 `animations.dancing` 用于指定播放音乐时的素材；默认小猫复用已有 GIF，音乐暂停时 GIF 仍继续播放。仅在系统开启“减少动态效果”时显示静态帧。新增角色后，将角色目录放入 `resources/characters/`，并在配置中指定对应的 `characterId`。
-
-## 常见问题
-
-### `sendChatMessage is not a function`
-
-这是 Electron 仍在使用旧版 preload 的表现。停止当前进程并完整重启：
-
-```powershell
-Ctrl+C
-npm run dev
-```
-
-如果程序仍在系统托盘，先右键托盘图标退出。
-
-### `Connection error`
-
-检查后端是否运行、`SALARY_CAT_API_URL` 是否正确，并确认后端数据库、Flyway 迁移和账号令牌配置正常。用户在设置页保存的模型服务必须支持 OpenAI-compatible Chat Completions 接口及流式响应。
-
-### 回复框太大或被裁剪
-
-窗口尺寸在 `src/shared/defaultConfig.ts` 的 `window.width` 和 `window.height` 中调整；回复气泡的宽度、最大高度和滚动提示在 `src/renderer/styles/index.css` 中调整。
-
-### 修改提示文字
-
-睡眠提示集中在 `src/shared/defaultConfig.ts` 的 `behavior.sleepMessages`。思考提示在 `src/renderer/scripts/pet/usePetBehavior.ts`，聊天错误处理在 `usePetChat.ts`，音乐提示仍在 `Pet.tsx`。
-
-
-
-
+- Preload API 缺失：退出托盘中的旧进程，再完整重启 `npm run dev`。
+- 后端连接失败：检查地址、服务运行情况及 `/api/v1/health/live`、`/api/v1/health/ready`。
+- 模型配置保存失败：检查后端加密密钥配置和日志，见后端 README。
+- 修改界面或行为：按 [开发指南的文件索引](docs/frontend-guide.md#2-现在从哪里读代码) 找对应模块。

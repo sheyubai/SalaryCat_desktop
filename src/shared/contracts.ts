@@ -125,6 +125,7 @@ export interface PetAPI {
   saveModelConfiguration(settings: UserLlmSettings): Promise<void>;
   getUsageStats(): Promise<UsageStats>;
   recordUsageActivity(kind: "chat" | "dance", durationSeconds: number): Promise<void>;
+  cancelChatMessage(): void;
   sendChatMessage(
     request: ChatRequest,
     onDelta?: (text: string) => void
@@ -155,5 +156,6 @@ export const IPC_CHANNELS = {
   getUsageStats: "usage:stats",
   recordUsageActivity: "usage:record-activity",
   sendChatMessage: "chat:send",
+  cancelChatMessage: "chat:cancel",
   chatDelta: "chat:delta"
 } as const;

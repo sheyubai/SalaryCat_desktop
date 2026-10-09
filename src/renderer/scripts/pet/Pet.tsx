@@ -30,7 +30,7 @@ export function Pet({ manifest }: PetProps) {
   const dance = usePetDance(preferences.music, themeUrl);
   const behavior = usePetBehavior(preferences.behavior, dance.playing || dance.status === "starting");
   const { wake, dismissMessage } = behavior;
-  const { sending, sendMessage } = usePetChat(behavior);
+  const { sending, sendMessage, stop, newConversation } = usePetChat(behavior);
   const [menuOpen, setMenuOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -218,7 +218,7 @@ export function Pet({ manifest }: PetProps) {
           drag.current = null;
         }}
       />
-      {chatOpen && <PetChatInput onSend={sendMessage} disabled={sending} />}
+      {chatOpen && <PetChatInput onSend={sendMessage} onStop={stop} onNewConversation={newConversation} disabled={sending} />}
     </main>
   );
 }

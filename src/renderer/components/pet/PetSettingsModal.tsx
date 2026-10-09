@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 
 import type { AuthSession, UsageStats, UserLlmSettings, UserMusicSettings, UserPreferences } from "../../../shared/contracts";
 import { LoginPage } from "../../pages/auth/LoginPage";
+import { readableError } from "../../../shared/errors";
 
 type SettingsSection = "account" | "usage" | "model" | "appearance" | "behavior" | "music" | "about";
 
@@ -11,6 +12,9 @@ interface PetSettingsModalProps {
   usageStats: UsageStats | null;
   authSession: AuthSession | null | undefined;
   appVersion: string;
+  loading?: boolean;
+  loadErrors?: { model: string; usage: string; account: string };
+  onReload?: () => void;
   onSave: (settings: UserLlmSettings) => Promise<void>;
   onLoggedIn: (session: AuthSession) => void;
   onLogout: () => void;
@@ -59,6 +63,9 @@ export function PetSettingsModal({
   usageStats,
   authSession,
   appVersion,
+  loading = false,
+  loadErrors,
+  onReload,
   onSave,
   onLoggedIn,
   onLogout,
@@ -120,7 +127,7 @@ export function PetSettingsModal({
     } catch (error) {
       setNotice({
         kind: "error",
-        message: error instanceof Error ? error.message : "保存设置失败，请重试。"
+        message: readableError(error, "保存设置失败，请重试。")
       });
     } finally {
       setSaving(false);
@@ -227,7 +234,7 @@ export function PetSettingsModal({
           <div><b>{stats?.total_tokens.toLocaleString() ?? "—"}</b><span>累计 Token</span></div><div><b>{stats?.peak_day_tokens.toLocaleString() ?? "—"}</b><span>单日峰值</span></div><div><b>{stats ? duration(stats.chat_duration_seconds) : "—"}</b><span>聊天时长</span></div><div><b>{stats?.current_streak_days ?? "—"} 天</b><span>当前连续</span></div><div><b>{stats?.longest_streak_days ?? "—"} 天</b><span>最长连续</span></div><div><b>{stats ? duration(stats.dance_duration_seconds) : "—"}</b><span>跳舞时间</span></div>
         </div>
         <h3 className="usage-title">Token 活动</h3><div className="usage-heatmap">{Array.from({ length: 182 }, (_, index) => { const day = new Date(firstActivityDay); day.setDate(firstActivityDay.getDate() + index); const key = localDateKey(day); const tokens = stats?.daily_tokens.find((item) => item.date === key)?.tokens ?? 0; const level = tokens ? Math.min(4, Math.ceil(tokens / maxTokens * 4)) : 0; return <span key={key} className={`usage-cell level-${level}`} data-tooltip={`${key}\n${tokens.toLocaleString()} Token`} />; })}</div><div className="usage-months">{monthLabels.map((label, index) => <span key={`${label}-${index}`}>{label}</span>)}</div>
-        {!stats && <p className="usage-empty">暂时无法连接后端，启动后端后会显示统计数据。</p>}
+        {!stats && <p className="usage-empty">{loading ? "正在读取使用统计…" : "暂无可显示的统计数据。"}</p>}
       </section>;
     }
     if (activeSection === "appearance") {
@@ -358,7 +365,7 @@ export function PetSettingsModal({
           <p>Key 会按当前账号保存到后端并加密存储，聊天时由后端调用模型。请不要在共享设备上保存私人 Key。</p>
         </div>
         <footer className="settings-actions">
-          <button type="submit" className="settings-save" disabled={saving}>{saving ? "保存中…" : "保存设置"}</button>
+          <button type="submit" className="settings-save" disabled={saving || loading}>{saving ? "保存中…" : "保存设置"}</button>
         </footer>
       </form>
     );
@@ -393,6 +400,12 @@ export function PetSettingsModal({
           <div className="settings-titlebar" aria-hidden="true" />
           <button className="settings-minimize" type="button" onClick={() => void window.petAPI.minimizeCurrentWindow()} aria-label="最小化">−</button>
           <button className="settings-close" type="button" onClick={onClose} aria-label="关闭">×</button>
+          {(["model", "usage", "account"] as string[]).includes(activeSection) && (
+            <div className="settings-load-status" role="status">
+              {loading ? "正在同步后端数据…" : loadErrors?.[activeSection as "model" | "usage" | "account"]}
+              <button type="button" onClick={onReload} disabled={loading || saving}>{loading ? "加载中" : "重新加载"}</button>
+            </div>
+          )}
           {notice && (
             <div className={`settings-toast is-${notice.kind}`} role="status">
               {notice.kind === "success" ? "✓" : "!"} {notice.message}

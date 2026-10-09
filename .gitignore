@@ -1,21 +1,14 @@
-__pycache__/
-*.py[cod]
-.Python
-.venv/
-venv/
-env/
-build/
-dist/
-*.spec
-*.egg-info/
-.DS_Store
-使用说明.txt
-*.bat
+# Dependencies and reproducible build output
 node_modules/
 out/
 release/
-npm-debug.log*
-.idea/
+coverage/
+.venv/
+
+# Local configuration and editor files
 .env
-.pytest_cache/
-.ruff_cache/
+.env.*
+!.env.example
+.idea/
+.DS_Store
+npm-debug.log*

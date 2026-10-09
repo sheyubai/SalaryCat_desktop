@@ -15,7 +15,12 @@ import {
     type WindowSize
 } from "../shared/contracts";
 
+let activeChatRequest: string | undefined;
+
 const petAPI: PetAPI = {
+    cancelChatMessage: () => {
+        if (activeChatRequest) ipcRenderer.send(IPC_CHANNELS.cancelChatMessage, activeChatRequest);
+    },
     getAuthSession: (): Promise<AuthSession | null> =>
         ipcRenderer.invoke(IPC_CHANNELS.authSession),
     login: (credentials: AuthCredentials): Promise<AuthSession> =>
@@ -70,6 +75,7 @@ const petAPI: PetAPI = {
         onDelta?: (text: string) => void
     ): Promise<ChatResponse> => {
         const requestId = crypto.randomUUID();
+        activeChatRequest = requestId;
         const listener = (
             _event: Electron.IpcRendererEvent,
             payload: {requestId: string; text: string}
@@ -81,7 +87,10 @@ const petAPI: PetAPI = {
         ipcRenderer.on(IPC_CHANNELS.chatDelta, listener);
         return ipcRenderer
             .invoke(IPC_CHANNELS.sendChatMessage, {requestId, request})
-            .finally(() => ipcRenderer.removeListener(IPC_CHANNELS.chatDelta, listener));
+            .finally(() => {
+                ipcRenderer.removeListener(IPC_CHANNELS.chatDelta, listener);
+                if (activeChatRequest === requestId) activeChatRequest = undefined;
+            });
     }
 };
 

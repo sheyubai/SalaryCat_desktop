@@ -24,6 +24,9 @@ export function PetSpeechBubble({
 }: PetSpeechBubbleProps) {
   const contentRef = useRef<HTMLDivElement>(null);
   const dismissTimer = useRef<number | undefined>(undefined);
+  const following = useRef(true);
+  const wasStreaming = useRef(false);
+  const hovering = useRef(false);
   const [hasMoreBelow, setHasMoreBelow] = useState(false);
 
   function cancelDismiss(): void {
@@ -32,7 +35,7 @@ export function PetSpeechBubble({
 
   function scheduleDismiss(): void {
     cancelDismiss();
-    if (!thinking && !streaming && onDismiss) {
+    if (!thinking && !streaming && !hovering.current && onDismiss) {
       dismissTimer.current = window.setTimeout(onDismiss, dismissAfterMs);
     }
   }
@@ -52,12 +55,19 @@ export function PetSpeechBubble({
     if (!content) {
       return;
     }
-    content.scrollTop = streaming ? content.scrollHeight : 0;
+    if (streaming && following.current) content.scrollTop = content.scrollHeight;
+    else if (!streaming && !wasStreaming.current) content.scrollTop = 0;
+    wasStreaming.current = streaming;
     updateScrollHint();
+  }, [message, streaming]);
+
+  useEffect(() => {
+    const content = contentRef.current;
+    if (!content) return;
     const observer = new ResizeObserver(updateScrollHint);
     observer.observe(content);
     return () => observer.disconnect();
-  }, [message, streaming]);
+  }, []);
 
   useEffect(() => {
     scheduleDismiss();
@@ -69,13 +79,17 @@ export function PetSpeechBubble({
       className={`speech-bubble${thinking ? " is-thinking" : ""}`}
       role="status"
       aria-live="polite"
-      onMouseEnter={cancelDismiss}
-      onMouseLeave={scheduleDismiss}
+      onMouseEnter={() => { hovering.current = true; cancelDismiss(); }}
+      onMouseLeave={() => { hovering.current = false; scheduleDismiss(); }}
     >
       <div
         ref={contentRef}
         className="speech-bubble-content"
-        onScroll={updateScrollHint}
+        onScroll={() => {
+          const content = contentRef.current;
+          if (content) following.current = content.scrollTop + content.clientHeight >= content.scrollHeight - 8;
+          updateScrollHint();
+        }}
       >
         {thinking ? (
           <div className="thinking-indicator">

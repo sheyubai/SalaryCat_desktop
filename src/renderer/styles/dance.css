@@ -1,0 +1,44 @@
+.settings-music-hint { margin: 12px 0; color: #9b8174; font-size: 12px; line-height: 1.6; }
+.pet-action-button:focus-visible { outline: 2px solid #d35f45; outline-offset: 3px; }
+
+.pet-dance-notes { position: absolute; inset: 0; pointer-events: none; z-index: 3; color: #cb7557; }
+.pet-dance-notes span { position: absolute; top: 48px; left: 195px; font-size: 21px; animation: pet-note 2s ease-in-out infinite; }
+.pet-dance-notes span:nth-child(2) { top: 20px; left: 165px; font-size: 15px; animation-delay: -1s; }
+
+@keyframes pet-note {
+  0%, 100% { opacity: .25; transform: translateY(3px) rotate(-10deg); }
+  50% { opacity: .9; transform: translateY(-6px) rotate(8deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pet-dance-notes span { animation: none; }
+}
+.pet-chat-input .chat-new {
+  flex-shrink: 0;
+  background: transparent;
+  color: #8c6452;
+}
+
+.pet-chat-input button:focus-visible {
+  outline: 2px solid #8c6452;
+  outline-offset: 2px;
+}
+.settings-load-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 38px 28px 0;
+  color: #8c6452;
+  font-size: 12px;
+}
+
+.settings-load-status button {
+  flex-shrink: 0;
+  margin-left: auto;
+  padding: 5px 10px;
+  border: 1px solid #dfcbbd;
+  border-radius: 8px;
+  background: #fffaf5;
+  color: #674b3d;
+  cursor: pointer;
+}
